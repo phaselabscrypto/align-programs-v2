@@ -1,0 +1,18 @@
+[features]
+seeds = false
+skip-lint = false
+[programs.localnet]
+organization = "GaZVotekguK2dubFsnqHs8LFmKGDfRHBQXrwfVEXPa96"
+reputation = "E6qW37nUQgCcqWxwjSkpeAfJeW17YzFbdrEtVrGPMExM"
+state_controller = "HEMPVSuZruC176FM63mCk8M86Hgxtims5VNGh1d6M8HX"
+vote_proxy = "4DXSkEgY4NTApL27cfX2tviysBKPrxWa4W3wAWTb4oGo"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "/Users/professormint/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
