@@ -19,3 +19,4 @@ default = []
 anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["init-if-needed"] }
 proposal = { path = "../../../modular-governance/programs/proposal", features = ["no-entrypoint", "cpi"] }
 nft-voter = {path = "../../../modular-governance/programs/nft_voter", features = ["no-entrypoint", "cpi"] }
+token-voter = {path = "../../../modular-governance/programs/token_voter", features = ["no-entrypoint", "cpi"] }

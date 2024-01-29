@@ -22,8 +22,6 @@ pub struct InitializeProxyArgsV0 {
  */
 #[program]
 pub mod vote_proxy {
-    use anchor_lang::accounts::program;
-    use nft_voter::nft_voter;
 
     use super::*;
 
@@ -42,19 +40,43 @@ pub mod vote_proxy {
         Ok(())
     }
 
-    pub fn vote_v0(ctx: Context<VoteV0>) -> Result<()> {
+    pub fn vote_v0<'info>(ctx: Context<'_, '_, '_, 'info, VoteV0<'info>>, choice: u16) -> Result<()> {
         let proxy = &ctx.accounts.proxy;
         let proposal = &ctx.accounts.proposal;
-
+        
         for conditional in &proxy.conditionals {
             if conditional.condition.evaluate(proposal)? {
                 let controller_pubkey = conditional.controller_pubkey;
-                let program_id = ctx.remaining_accounts.last();
+                let program_info = ctx.remaining_accounts.last().unwrap();
+                match controller_pubkey {
+                    pubkey if pubkey == nft_voter::id() => {
+                        let name = ctx.accounts.proxy.name.as_bytes();
+                        let bump = ctx.accounts.proxy.bump;
+                        let seeds = [b"proxy", name, &[bump]];
+                        let signers = vec![seeds.as_slice()];
 
+                        nft_voter::cpi::vote_v1(CpiContext::new_with_signer(
+                            program_info.to_owned(),
+                            nft_voter::cpi::accounts::VoteV1{
+                                payer: ctx.accounts.payer.to_account_info(),
+                                marker: ctx.remaining_accounts[0].clone(),
+                                nft_voter: ctx.remaining_accounts[1].clone(),
+                                voter: ctx.accounts.voter.to_account_info(),
+                                mint: ctx.remaining_accounts[2].clone(),
+                                metadata: ctx.remaining_accounts[3].clone(),
+                                token_account: ctx.remaining_accounts[4].clone(),
+                                proposal: proposal.to_account_info(),
+                                proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                                state_controller: ctx.accounts.state_controller.to_account_info(),
+                                on_vote_hook: ctx.accounts.on_vote_hook.to_account_info(),
+                                proposal_program: ctx.accounts.proposal_program.to_account_info(),
+                                system_program: ctx.accounts.system_program.to_account_info(),
+                                vote_controller: ctx.accounts.proxy.to_account_info()
+                            },  &signers), nft_voter::VoteArgsV0 { choice })?;
+                    }
+                    _ => return Err(ErrorCode::InvalidController.into())
+                }
                 
-
-                nft_voter::cpi::vote_v0(CpiContext::new_with_signer(
-                    , accounts, signer_seeds), args)
             }
         }
 
@@ -97,6 +119,7 @@ pub struct VoteV0<'info> {
         owner = proposal_program.key()
       )]
     pub proposal_config: Account<'info, ProposalConfigV0>,
+    /// CHECK: Checked in cpi
     #[account(mut)]
     pub state_controller: AccountInfo<'info>,
     /// CHECK: Checked via has_one
@@ -141,16 +164,16 @@ impl Condition {
             Operand::TransactionValue(val) => return Err(error!(ErrorCode::FeatureNotImplemented)),
             Operand::ProposalState(val) => *val as u64,
         };
-
+        let state_u8: u8 = proposal.state.to_numeric();
         match self.operator {
-            ComparisonOperator::Equals => Ok(derived_value == proposal.state.to_numeric().into()),
+            ComparisonOperator::Equals => Ok(derived_value == state_u8 as u64),
             ComparisonOperator::NotEquals => {
-                Ok(derived_value != proposal.state.to_numeric().into())
+                Ok(derived_value !=  state_u8 as u64)
             }
             ComparisonOperator::GreaterThan => {
-                Ok(derived_value > proposal.state.to_numeric().into())
+                Ok(derived_value >  state_u8 as u64)
             }
-            ComparisonOperator::LessThan => Ok(derived_value < proposal.state.to_numeric().into()),
+            ComparisonOperator::LessThan => Ok(derived_value <  state_u8 as u64),
         }
     }
 }

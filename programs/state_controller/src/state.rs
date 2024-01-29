@@ -119,7 +119,7 @@ impl ResolutionStrategy {
                         stack.push(None);
                     }
                 }
-                ResolutionNode::OffsetFromStartTs { offset } => match proposal.state {
+                ResolutionNode::OffsetFromStartTs { offset } => match &proposal.state {
                     ProposalState::Voting { start_ts } => {
                         if Clock::get().unwrap().unix_timestamp > start_ts + offset {
                             stack.push(Some(

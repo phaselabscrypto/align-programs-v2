@@ -39,7 +39,7 @@ pub struct OnVoteV0<'info> {
     owner = *proposal.to_account_info().owner,
     has_one = proposal_config,
     constraint = proposal.to_account_info().is_signer,
-    constraint = match proposal.state {
+    constraint = match &proposal.state {
       ProposalState::Voting { .. } => true,
       ProposalState::Custom { name, .. } => name == "Ranking",
       _ => false
