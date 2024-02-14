@@ -29,12 +29,22 @@ pub mod vote_proxy {
         ctx: Context<Initialize>,
         args: InitializeProxyArgsV0,
     ) -> Result<()> {
+
+        let conditionals = if args.conditionals.len() == 0  {
+            let default_conditional = ConditionalController::default();
+            let conditions = vec![default_conditional];
+            conditions
+        }
+        else{
+            args.conditionals
+        };
+
         ctx.accounts.proxy.set_inner(ProxyV0 {
             authority: args.authority,
             fallback_contoller: args.fallback_contoller,
             name: args.name,
             bump: *ctx.bumps.get("proxy").unwrap(),
-            conditionals: args.conditionals,
+            conditionals,
         });
 
         Ok(())
@@ -137,11 +147,32 @@ pub struct Condition {
     pub operator: ComparisonOperator,
     pub operand: Operand, // Only one operand is stored
 }
+
+
+impl Default for Condition {
+    fn default() -> Self {
+        return Self {
+            operator: ComparisonOperator::Equals,
+            operand: Operand::ProposalState(2),
+        }
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ConditionalController {
     pub condition: Condition,
     pub controller_pubkey: Pubkey,
 }
+
+impl Default for ConditionalController {
+    fn default() -> Self {
+        return Self {
+            condition: Condition::default(),
+            controller_pubkey: nft_voter::id(),
+        }
+    }
+}
+
 trait ProposalStateExt {
     fn to_numeric(&self) -> u8;
 }
@@ -202,8 +233,10 @@ pub struct ProxyV0 {
 }
 
 impl ProxyV0 {
+    // THis is not working properly double check
     pub fn size(conditionals: Vec<ConditionalController>, name: &str) -> usize {
-        4 + (conditionals.len() * mem::size_of::<ConditionalController>())
+        8 +
+        4 + (conditionals.len().max(1) * mem::size_of::<ConditionalController>())
             + 32
             + 32
             + 4
