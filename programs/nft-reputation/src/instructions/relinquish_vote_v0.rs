@@ -30,8 +30,8 @@ pub struct RelinquishVoteV0<'info> {
     seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
     seeds::program = MetadataAccount::owner(),
     bump,
-    constraint = metadata.collection.as_ref().map(|col| 
-      col.verified && 
+    constraint = metadata.collection.as_ref().map(|col|
+      col.verified &&
       nft_voter.collections.iter().any(|collection_item| collection_item.mint == col.key)
   ).unwrap_or_else(|| false)
     )]

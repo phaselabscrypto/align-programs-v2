@@ -7,7 +7,7 @@ use crate::{nft_voter_seeds, state::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct VoteArgsV0 {
-  pub choice: u16,
+    pub choice: u16,
 }
 #[derive(Accounts)]
 pub struct VoteV0<'info> {
@@ -29,11 +29,10 @@ pub struct VoteV0<'info> {
     seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
     seeds::program = MetadataAccount::owner(),
     bump,
-    constraint = metadata.collection.as_ref().map(|col| 
-      col.verified && 
+    constraint = metadata.collection.as_ref().map(|col|
+      col.verified &&
       nft_voter.collections.iter().any(|collection_item| collection_item.mint == col.key)
   ).unwrap_or_else(|| false)
-  
   )]
     pub metadata: Box<Account<'info, MetadataAccount>>,
     #[account(
@@ -54,6 +53,10 @@ pub struct VoteV0<'info> {
     owner = proposal_program.key()
   )]
     pub proposal_config: Account<'info, ProposalConfigV0>,
+    // CHECK: Checked in cpi
+    pub rep_config: UncheckedAccount<'info>,
+    // CHECK: Checked in cpi
+    pub receipt: UncheckedAccount<'info>,
     /// CHECK: Checked via cpi
     #[account(mut)]
     pub state_controller: Signer<'info>,
@@ -64,32 +67,37 @@ pub struct VoteV0<'info> {
     constraint = *proposal.to_account_info().owner == proposal_program.key()
   )]
     pub proposal_program: AccountInfo<'info>,
+    #[account(
+      executable,
+      address = reputation::id()
+    )]
+    pub reputation_program: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
 pub fn handler(ctx: Context<VoteV0>, args: VoteArgsV0) -> Result<()> {
-    msg!("I started");
-    let marker = &mut ctx.accounts.marker;
-    marker.proposal = ctx.accounts.proposal.key();
-    marker.bump_seed = ctx.bumps["marker"];
-    marker.voter = ctx.accounts.voter.key();
-    marker.nft_voter = ctx.accounts.nft_voter.key();
-    marker.mint = ctx.accounts.mint.key();
 
-    msg!("I set");
-    // Don't allow voting for the same choice twice.
-    require!(
-        marker.choices.iter().all(|choice| *choice != args.choice),
-        ErrorCode::AlreadyVoted
-    );
-    require_gt!(
-        ctx.accounts.proposal.max_choices_per_voter,
-        marker.choices.len() as u16,
-        ErrorCode::MaxChoicesExceeded
-    );
-
-    marker.choices.push(args.choice);
-    msg!("I vote");
+    reputation::cpi::vote_v0(
+        CpiContext::new(
+            ctx.accounts.reputation_program.to_account_info(),
+            reputation::cpi::accounts::VoteV0 {
+                payer: ctx.accounts.payer.to_account_info(),
+                voter: ctx.accounts.voter.to_account_info(),
+                rep_config: ctx.accounts.rep_config.to_account_info(),
+                vote_controller: ctx.accounts.vote_controller.to_account_info(),
+                receipt: ctx.accounts.receipt.to_account_info(),
+                proposal: ctx.accounts.proposal.to_account_info(),
+                proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                state_controller: ctx.accounts.state_controller.to_account_info(),
+                on_vote_hook: ctx.accounts.on_vote_hook.to_account_info(),
+                proposal_program: ctx.accounts.proposal_program.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+            },
+        ),
+        reputation::RepVoteArgsV0 {
+            choice: args.choice,
+        },
+    )?;
 
     Ok(())
 }

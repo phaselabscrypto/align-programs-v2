@@ -18,7 +18,5 @@ default = []
 [dependencies]
 anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
 anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
-
-nft-reputation = { path = "../nft-reputation", features = ["no-entrypoint", "cpi"] }
 proposal = { path = "../../../modular-governance/programs/proposal",  features = ["no-entrypoint", "cpi"]  }
 

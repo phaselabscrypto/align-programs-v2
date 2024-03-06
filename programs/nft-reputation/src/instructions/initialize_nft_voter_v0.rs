@@ -6,7 +6,7 @@ use anchor_spl::token::Mint;
 pub struct InitializeNftVoterArgsV0 {
     pub name: String,
     pub authority: Pubkey,
-    pub collections: Vec<CollectionItem>
+    pub collections: Vec<CollectionItem>,
 }
 
 #[derive(Accounts)]

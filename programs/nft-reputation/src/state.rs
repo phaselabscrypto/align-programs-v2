@@ -29,7 +29,7 @@ pub struct CollectionItem {
 }
 
 impl anchor_lang::Space for CollectionItem {
-  const INIT_SPACE: usize = std::mem::size_of::<Self>();
+    const INIT_SPACE: usize = std::mem::size_of::<Self>();
 }
 
 #[macro_export]

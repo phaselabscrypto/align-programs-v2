@@ -32,8 +32,7 @@ pub struct RepVoteArgsV0 {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct AddToReceiptArgsV0 {
-    amount: u64,
-
+    pub amount: u64,
 }
 
 #[program]
@@ -70,7 +69,12 @@ pub mod reputation {
             });
         }
 
-        ctx.accounts.receipt.amount = ctx.accounts.receipt.amount.checked_add(args.amount).unwrap();
+        ctx.accounts.receipt.amount = ctx
+            .accounts
+            .receipt
+            .amount
+            .checked_add(args.amount)
+            .unwrap();
 
         Ok(())
     }
@@ -86,7 +90,7 @@ pub mod reputation {
                     proposal_config: ctx.accounts.proposal_config.to_account_info(),
                     proposal: ctx.accounts.proposal.to_account_info(),
                     on_vote_hook: ctx.accounts.on_vote_hook.to_account_info(),
-                }
+                },
             ),
             proposal::VoteArgsV0 {
                 remove_vote: false,
@@ -145,7 +149,6 @@ pub struct AddToReceiptV0<'info> {
 
     pub mint: Box<Account<'info, Mint>>,
     pub system_program: Program<'info, System>,
-
 }
 
 #[derive(Accounts)]
@@ -174,16 +177,16 @@ pub struct VoteV0<'info> {
     owner = proposal_program.key()
   )]
     pub proposal_config: Account<'info, ProposalConfigV0>,
-        /// CHECK: Checked via cpi
-        #[account(mut)]
-        pub state_controller: Signer<'info>,
-        /// CHECK: Checked via has_one
-        pub on_vote_hook: AccountInfo<'info>,
-        /// CHECK: Checked via constraint
-        #[account(
+    /// CHECK: Checked via cpi
+    #[account(mut)]
+    pub state_controller: Signer<'info>,
+    /// CHECK: Checked via has_one
+    pub on_vote_hook: AccountInfo<'info>,
+    /// CHECK: Checked via constraint
+    #[account(
         constraint = *proposal.to_account_info().owner == proposal_program.key()
       )]
-        pub proposal_program: AccountInfo<'info>,
+    pub proposal_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -235,12 +238,11 @@ impl ReputationManagerV0 {
     }
 }
 
-
 #[account]
 pub struct ReceiptV0 {
     pub voter: Pubkey,
     pub rep_voter: Pubkey,
-    pub proposal : Pubkey,
+    pub proposal: Pubkey,
     pub amount: u64,
     pub num_active_votes: u64,
     pub bump_seed: u8,
