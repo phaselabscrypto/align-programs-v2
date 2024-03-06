@@ -29,13 +29,11 @@ pub mod vote_proxy {
         ctx: Context<Initialize>,
         args: InitializeProxyArgsV0,
     ) -> Result<()> {
-
-        let conditionals = if args.conditionals.len() == 0  {
+        let conditionals = if args.conditionals.len() == 0 {
             let default_conditional = ConditionalController::default();
             let conditions = vec![default_conditional];
             conditions
-        }
-        else{
+        } else {
             args.conditionals
         };
 
@@ -50,10 +48,13 @@ pub mod vote_proxy {
         Ok(())
     }
 
-    pub fn vote_v0<'info>(ctx: Context<'_, '_, '_, 'info, VoteV0<'info>>, choice: u16) -> Result<()> {
+    pub fn vote_v0<'info>(
+        ctx: Context<'_, '_, '_, 'info, VoteV0<'info>>,
+        choice: u16,
+    ) -> Result<()> {
         let proxy = &ctx.accounts.proxy;
         let proposal = &ctx.accounts.proposal;
-        
+
         for conditional in &proxy.conditionals {
             if conditional.condition.evaluate(proposal)? {
                 let controller_pubkey = conditional.controller_pubkey;
@@ -65,28 +66,38 @@ pub mod vote_proxy {
                         let seeds = [b"proxy", name, &[bump]];
                         let signers = vec![seeds.as_slice()];
 
-                        nft_voter::cpi::vote_v1(CpiContext::new_with_signer(
-                            program_info.to_owned(),
-                            nft_voter::cpi::accounts::VoteV1{
-                                payer: ctx.accounts.payer.to_account_info(),
-                                marker: ctx.remaining_accounts[0].clone(),
-                                nft_voter: ctx.remaining_accounts[1].clone(),
-                                voter: ctx.accounts.voter.to_account_info(),
-                                mint: ctx.remaining_accounts[2].clone(),
-                                metadata: ctx.remaining_accounts[3].clone(),
-                                token_account: ctx.remaining_accounts[4].clone(),
-                                proposal: proposal.to_account_info(),
-                                proposal_config: ctx.accounts.proposal_config.to_account_info(),
-                                state_controller: ctx.accounts.state_controller.to_account_info(),
-                                on_vote_hook: ctx.accounts.on_vote_hook.to_account_info(),
-                                proposal_program: ctx.accounts.proposal_program.to_account_info(),
-                                system_program: ctx.accounts.system_program.to_account_info(),
-                                vote_controller: ctx.accounts.proxy.to_account_info()
-                            },  &signers), nft_voter::VoteArgsV0 { choice })?;
+                        nft_voter::cpi::vote_v1(
+                            CpiContext::new_with_signer(
+                                program_info.to_owned(),
+                                nft_voter::cpi::accounts::VoteV1 {
+                                    payer: ctx.accounts.payer.to_account_info(),
+                                    marker: ctx.remaining_accounts[0].clone(),
+                                    nft_voter: ctx.remaining_accounts[1].clone(),
+                                    voter: ctx.accounts.voter.to_account_info(),
+                                    mint: ctx.remaining_accounts[2].clone(),
+                                    metadata: ctx.remaining_accounts[3].clone(),
+                                    token_account: ctx.remaining_accounts[4].clone(),
+                                    proposal: proposal.to_account_info(),
+                                    proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                                    state_controller: ctx
+                                        .accounts
+                                        .state_controller
+                                        .to_account_info(),
+                                    on_vote_hook: ctx.accounts.on_vote_hook.to_account_info(),
+                                    proposal_program: ctx
+                                        .accounts
+                                        .proposal_program
+                                        .to_account_info(),
+                                    system_program: ctx.accounts.system_program.to_account_info(),
+                                    vote_controller: ctx.accounts.proxy.to_account_info(),
+                                },
+                                &signers,
+                            ),
+                            nft_voter::VoteArgsV0 { choice },
+                        )?;
                     }
-                    _ => return Err(ErrorCode::InvalidController.into())
+                    _ => return Err(ErrorCode::InvalidController.into()),
                 }
-                
             }
         }
 
@@ -142,16 +153,47 @@ pub struct VoteV0<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct RelinquishVoteV0<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    pub voter: Signer<'info>,
+    pub proxy: Account<'info, ProxyV0>,
+    #[account(
+        mut,
+        has_one = proposal_config,
+        owner = proposal_program.key(),
+      )]
+    pub proposal: Account<'info, ProposalV0>,
+    #[account(
+        has_one = on_vote_hook,
+        has_one = state_controller,
+        owner = proposal_program.key()
+      )]
+    pub proposal_config: Account<'info, ProposalConfigV0>,
+    /// CHECK: Checked in cpi
+    #[account(mut)]
+    pub state_controller: AccountInfo<'info>,
+    /// CHECK: Checked via has_one
+    pub on_vote_hook: AccountInfo<'info>,
+    /// CHECK: Checked via constraint
+    #[account(
+        constraint = *proposal.to_account_info().owner == proposal_program.key()
+    )]
+    pub proposal_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Condition {
     pub operator: ComparisonOperator,
     pub operand: Operand, // Only one operand is stored
 }
 
-
 impl Default for Condition {
     fn default() -> Self {
-        return Self {
+        Self {
             operator: ComparisonOperator::Equals,
             operand: Operand::ProposalState(2),
         }
@@ -169,7 +211,7 @@ impl Default for ConditionalController {
         return Self {
             condition: Condition::default(),
             controller_pubkey: nft_voter::id(),
-        }
+        };
     }
 }
 
@@ -198,13 +240,9 @@ impl Condition {
         let state_u8: u8 = proposal.state.to_numeric();
         match self.operator {
             ComparisonOperator::Equals => Ok(derived_value == state_u8 as u64),
-            ComparisonOperator::NotEquals => {
-                Ok(derived_value !=  state_u8 as u64)
-            }
-            ComparisonOperator::GreaterThan => {
-                Ok(derived_value >  state_u8 as u64)
-            }
-            ComparisonOperator::LessThan => Ok(derived_value <  state_u8 as u64),
+            ComparisonOperator::NotEquals => Ok(derived_value != state_u8 as u64),
+            ComparisonOperator::GreaterThan => Ok(derived_value > state_u8 as u64),
+            ComparisonOperator::LessThan => Ok(derived_value < state_u8 as u64),
         }
     }
 }
@@ -233,10 +271,9 @@ pub struct ProxyV0 {
 }
 
 impl ProxyV0 {
-    // THis is not working properly double check
     pub fn size(conditionals: Vec<ConditionalController>, name: &str) -> usize {
-        8 +
-        4 + (conditionals.len().max(1) * mem::size_of::<ConditionalController>())
+        8 + 4
+            + (conditionals.len().max(1) * mem::size_of::<ConditionalController>())
             + 32
             + 32
             + 4

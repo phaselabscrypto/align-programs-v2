@@ -1,12 +1,12 @@
 [package]
-name = "reputation"
+name = "nft-reputation"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "reputation"
+name = "nft_reputation"
 
 [features]
 no-entrypoint = []
@@ -16,9 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
-anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
-
-nft-reputation = { path = "../nft-reputation", features = ["no-entrypoint", "cpi"] }
+anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["init-if-needed"] }
+anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["token"] }
 proposal = { path = "../../../modular-governance/programs/proposal",  features = ["no-entrypoint", "cpi"]  }
 

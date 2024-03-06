@@ -284,7 +284,7 @@ dependencies = [
  "arrayref",
  "base64 0.13.1",
  "bincode",
- "borsh 0.9.3",
+ "borsh 0.10.3",
  "bytemuck",
  "getrandom 0.2.12",
  "solana-program",
@@ -1342,6 +1342,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nft-reputation"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang 0.28.0 (git+https://github.com/ChewingGlass/anchor?branch=bugfix/cpi-polymorphism)",
+ "anchor-spl",
+ "proposal",
+]
+
+[[package]]
 name = "nft-voter"
 version = "0.1.0"
 dependencies = [
@@ -1720,6 +1729,9 @@ name = "reputation"
 version = "0.1.0"
 dependencies = [
  "anchor-lang 0.28.0 (git+https://github.com/ChewingGlass/anchor?branch=bugfix/cpi-polymorphism)",
+ "anchor-spl",
+ "nft-reputation",
+ "proposal",
 ]
 
 [[package]]

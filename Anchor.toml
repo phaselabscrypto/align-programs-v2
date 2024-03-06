@@ -1,7 +1,11 @@
+[toolchain]
+
 [features]
 seeds = false
 skip-lint = false
+
 [programs.localnet]
+nft-reputation = "3mYGDQq3NM4xgJAe3khNsicsnnJwHL6kBpLTATXDiMM9"
 organization = "GaZVotekguK2dubFsnqHs8LFmKGDfRHBQXrwfVEXPa96"
 reputation = "E6qW37nUQgCcqWxwjSkpeAfJeW17YzFbdrEtVrGPMExM"
 state_controller = "HEMPVSuZruC176FM63mCk8M86Hgxtims5VNGh1d6M8HX"
