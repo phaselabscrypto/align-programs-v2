@@ -76,7 +76,6 @@ pub struct VoteV0<'info> {
 }
 
 pub fn handler(ctx: Context<VoteV0>, args: VoteArgsV0) -> Result<()> {
-
     reputation::cpi::vote_v0(
         CpiContext::new(
             ctx.accounts.reputation_program.to_account_info(),

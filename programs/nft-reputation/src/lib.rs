@@ -31,6 +31,6 @@ pub mod nft_reputation {
         vote_v0::handler(ctx, args)
     }
     pub fn add_to_receipt_v0(ctx: Context<AddToReceiptV0>) -> Result<()> {
-      add_to_receipt_v0::handler(ctx)
-  }
+        add_to_receipt_v0::handler(ctx)
+    }
 }
