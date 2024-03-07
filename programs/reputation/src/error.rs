@@ -6,5 +6,4 @@ pub enum ErrorCode {
     MaxChoicesExceeded,
     #[msg("Your vote amount has exceed the amount you have avaliable")]
     VoteAmountExceeded,
-
 }

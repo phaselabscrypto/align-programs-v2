@@ -8,24 +8,23 @@ use crate::{nft_voter_seeds, state::*};
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct RelinquishVoteArgsV0 {
     pub choice: u16,
+    pub amount: u64,
 }
 
 #[derive(Accounts)]
 pub struct RelinquishVoteV0<'info> {
-    /// CHECK: You're getting sol why do you care?
-    /// Account to receive sol refund if marker is closed
     #[account(mut)]
-    pub refund: AccountInfo<'info>,
+    pub payer: Signer<'info>,
     #[account(
       mut,
-    close = voter,
-    seeds = [b"marker", nft_voter.key().as_ref(), mint.key().as_ref(), proposal.key().as_ref()],
-    bump = marker.bump_seed,
-    has_one = nft_voter
-  )]
-    pub marker: Account<'info, VoteMarkerV0>,
-    pub nft_voter: Account<'info, NftVoterV0>,
+      seeds = [b"marker", nft_voter.key().as_ref(), mint.key().as_ref(), proposal.key().as_ref()],
+      bump = marker.bump_seed,
+      has_one = nft_voter
+    )]
+    pub marker: Box<Account<'info, VoteMarkerV0>>,
+    pub nft_voter: Box<Account<'info, NftVoterV0>>,
     pub voter: Signer<'info>,
+    pub vote_controller: Signer<'info>,
     pub mint: Box<Account<'info, Mint>>,
     #[account(
     seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
@@ -35,7 +34,7 @@ pub struct RelinquishVoteV0<'info> {
       col.verified &&
       nft_voter.collections.iter().any(|collection_item| collection_item.mint == col.key)
   ).unwrap_or_else(|| false)
-    )]
+  )]
     pub metadata: Box<Account<'info, MetadataAccount>>,
     #[account(
     associated_token::authority = voter,
@@ -55,9 +54,13 @@ pub struct RelinquishVoteV0<'info> {
     owner = proposal_program.key()
   )]
     pub proposal_config: Account<'info, ProposalConfigV0>,
+    /// CHECK: Checked in cpi
+    pub rep_config: UncheckedAccount<'info>,
+    /// CHECK: Checked in cpi
+    pub receipt: UncheckedAccount<'info>,
     /// CHECK: Checked via cpi
     #[account(mut)]
-    pub state_controller: AccountInfo<'info>,
+    pub state_controller: Signer<'info>,
     /// CHECK: Checked via has_one
     pub on_vote_hook: AccountInfo<'info>,
     /// CHECK: Checked via constraint
@@ -65,29 +68,36 @@ pub struct RelinquishVoteV0<'info> {
     constraint = *proposal.to_account_info().owner == proposal_program.key()
   )]
     pub proposal_program: AccountInfo<'info>,
+    ///CHECK checked address
+    #[account(
+      executable,
+      address = reputation::id()
+    )]
+    pub reputation_program: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
 pub fn handler(ctx: Context<RelinquishVoteV0>, args: RelinquishVoteArgsV0) -> Result<()> {
-
-
-    proposal::cpi::vote_v0(
-        CpiContext::new_with_signer(
-            ctx.accounts.proposal_program.to_account_info(),
-            proposal::cpi::accounts::VoteV0 {
+    reputation::cpi::relinquish_vote_v0(
+        CpiContext::new(
+            ctx.accounts.reputation_program.to_account_info(),
+            reputation::cpi::accounts::VoteV0 {
+                payer: ctx.accounts.payer.to_account_info(),
                 voter: ctx.accounts.voter.to_account_info(),
-                vote_controller: ctx.accounts.nft_voter.to_account_info(),
-                state_controller: ctx.accounts.state_controller.to_account_info(),
-                proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                rep_config: ctx.accounts.rep_config.to_account_info(),
+                vote_controller: ctx.accounts.vote_controller.to_account_info(),
+                receipt: ctx.accounts.receipt.to_account_info(),
                 proposal: ctx.accounts.proposal.to_account_info(),
+                proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                state_controller: ctx.accounts.state_controller.to_account_info(),
                 on_vote_hook: ctx.accounts.on_vote_hook.to_account_info(),
+                proposal_program: ctx.accounts.proposal_program.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
             },
-            &[nft_voter_seeds!(ctx.accounts.nft_voter)],
         ),
-        proposal::VoteArgsV0 {
-            remove_vote: true,
+        reputation::RepVoteArgsV0 {
             choice: args.choice,
-            weight: 1_u128,
+            amount: args.amount,
         },
     )?;
 

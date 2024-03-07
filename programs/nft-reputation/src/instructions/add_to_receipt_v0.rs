@@ -7,7 +7,7 @@ use crate::{nft_voter_seeds, state::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct AddToReceiptArgsV0 {
-  pub choice: u16,
+    pub choice: u16,
 }
 #[derive(Accounts)]
 pub struct AddToReceiptV0<'info> {
@@ -48,10 +48,12 @@ pub struct AddToReceiptV0<'info> {
     ///CHECK: Checked in cpi
     pub rep_config: UncheckedAccount<'info>,
 
+    ///CHECK in cpi
     #[account(mut)]
     pub receipt: UncheckedAccount<'info>,
     ///CHECK in cpi
     pub proposal: UncheckedAccount<'info>,
+    ///CHECK checked address
     #[account(
     executable,
     address = reputation::id()
@@ -61,14 +63,12 @@ pub struct AddToReceiptV0<'info> {
 }
 
 pub fn handler(ctx: Context<AddToReceiptV0>) -> Result<()> {
-
-  let marker = &mut ctx.accounts.marker;
-  marker.proposal = ctx.accounts.proposal.key();
-  marker.bump_seed = ctx.bumps["marker"];
-  marker.voter = ctx.accounts.voter.key();
-  marker.nft_voter = ctx.accounts.nft_voter.key();
-  marker.mint = ctx.accounts.mint.key();
-
+    let marker = &mut ctx.accounts.marker;
+    marker.proposal = ctx.accounts.proposal.key();
+    marker.bump_seed = ctx.bumps["marker"];
+    marker.voter = ctx.accounts.voter.key();
+    marker.nft_voter = ctx.accounts.nft_voter.key();
+    marker.mint = ctx.accounts.mint.key();
 
     reputation::cpi::add_to_receipt(
         CpiContext::new_with_signer(
@@ -85,7 +85,7 @@ pub fn handler(ctx: Context<AddToReceiptV0>) -> Result<()> {
             },
             &[nft_voter_seeds!(ctx.accounts.nft_voter)],
         ),
-        reputation::AddToReceiptArgsV0 { amount: 1},
+        reputation::AddToReceiptArgsV0 { amount: 1 },
     )?;
 
     Ok(())

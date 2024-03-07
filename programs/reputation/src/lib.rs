@@ -32,12 +32,12 @@ pub struct InitializeRepConfigArgsV0 {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct RepVoteArgsV0 {
     pub choice: u16,
-    pub amount: u64
+    pub amount: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct AddToReceiptArgsV0 {
-    pub amount: u64
+    pub amount: u64,
 }
 
 #[program]
@@ -71,7 +71,7 @@ pub mod reputation {
                 amount: 0,
                 num_active_votes: 0,
                 bump_seed: ctx.bumps["receipt"],
-                choices: vec![]
+                choices: vec![],
             });
         }
         // let receipt = &mut ctx.accounts.receipt;
@@ -97,8 +97,25 @@ pub mod reputation {
     }
 
     pub fn vote_v0(ctx: Context<VoteV0>, args: RepVoteArgsV0) -> Result<()> {
-        
-        require_gte!(ctx.accounts.receipt.amount, ctx.accounts.receipt.num_active_votes.checked_add(args.amount).unwrap(), ErrorCode::VoteAmountExceeded);
+        require_gte!(
+            ctx.accounts.receipt.amount,
+            ctx.accounts
+                .receipt
+                .num_active_votes
+                .checked_add(args.amount)
+                .unwrap(),
+            ErrorCode::VoteAmountExceeded
+        );
+
+        if ctx.accounts.receipt.choices.len() == 0 {
+            ctx.accounts.receipt.choices = vec![args.choice];
+        } else {
+            require_eq!(
+                args.choice,
+                ctx.accounts.receipt.choices.pop().unwrap(),
+                ErrorCode::VoteAmountExceeded
+            );
+        }
 
         proposal::cpi::vote_v0(
             CpiContext::new(
@@ -115,11 +132,59 @@ pub mod reputation {
             proposal::VoteArgsV0 {
                 remove_vote: false,
                 choice: args.choice,
-                weight: u128::from(ctx.accounts.receipt.amount),
+                weight: u128::from(args.amount),
             },
         )?;
 
-        ctx.accounts.receipt.num_active_votes.checked_add(args.amount).unwrap();
+        ctx.accounts.receipt.num_active_votes = ctx
+            .accounts
+            .receipt
+            .num_active_votes
+            .checked_add(args.amount)
+            .unwrap();
+
+        Ok(())
+    }
+    pub fn relinquish_vote_v0(ctx: Context<VoteV0>, args: RepVoteArgsV0) -> Result<()> {
+        require_gte!(
+            0,
+            ctx.accounts
+                .receipt
+                .num_active_votes
+                .checked_sub(args.amount)
+                .unwrap(),
+            ErrorCode::VoteAmountExceeded
+        );
+        require!(
+            ctx.accounts.receipt.choices.len() == 1,
+            ErrorCode::VoteAmountExceeded
+        );
+
+        proposal::cpi::vote_v0(
+            CpiContext::new(
+                ctx.accounts.proposal_program.to_account_info(),
+                proposal::cpi::accounts::VoteV0 {
+                    voter: ctx.accounts.voter.to_account_info(),
+                    vote_controller: ctx.accounts.vote_controller.to_account_info(),
+                    state_controller: ctx.accounts.state_controller.to_account_info(),
+                    proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                    proposal: ctx.accounts.proposal.to_account_info(),
+                    on_vote_hook: ctx.accounts.on_vote_hook.to_account_info(),
+                },
+            ),
+            proposal::VoteArgsV0 {
+                remove_vote: true,
+                choice: args.choice,
+                weight: u128::from(args.amount),
+            },
+        )?;
+
+        ctx.accounts.receipt.num_active_votes = ctx
+            .accounts
+            .receipt
+            .num_active_votes
+            .checked_sub(args.amount)
+            .unwrap();
 
         Ok(())
     }
@@ -188,6 +253,7 @@ pub struct VoteV0<'info> {
     pub vote_controller: Signer<'info>,
 
     #[account(
+        mut,
        constraint = receipt.proposal == proposal.key(),
        constraint = receipt.voter == voter.key(),
     )]

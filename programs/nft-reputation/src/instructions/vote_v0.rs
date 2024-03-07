@@ -8,7 +8,7 @@ use crate::{nft_voter_seeds, state::*};
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct VoteArgsV0 {
     pub choice: u16,
-    pub amount: u64
+    pub amount: u64,
 }
 
 #[derive(Accounts)]
@@ -55,9 +55,9 @@ pub struct VoteV0<'info> {
     owner = proposal_program.key()
   )]
     pub proposal_config: Account<'info, ProposalConfigV0>,
-    // CHECK: Checked in cpi
+    /// CHECK: Checked in cpi
     pub rep_config: UncheckedAccount<'info>,
-    // CHECK: Checked in cpi
+    /// CHECK: Checked in cpi
     pub receipt: UncheckedAccount<'info>,
     /// CHECK: Checked via cpi
     #[account(mut)]
@@ -69,6 +69,7 @@ pub struct VoteV0<'info> {
     constraint = *proposal.to_account_info().owner == proposal_program.key()
   )]
     pub proposal_program: AccountInfo<'info>,
+    ///CHECK checked address
     #[account(
       executable,
       address = reputation::id()
@@ -77,7 +78,7 @@ pub struct VoteV0<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<VoteV0>, args: VoteArgsV0 ) -> Result<()> {
+pub fn handler(ctx: Context<VoteV0>, args: VoteArgsV0) -> Result<()> {
     reputation::cpi::vote_v0(
         CpiContext::new(
             ctx.accounts.reputation_program.to_account_info(),
