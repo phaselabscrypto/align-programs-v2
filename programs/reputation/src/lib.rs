@@ -3,6 +3,10 @@ use std::mem;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 use proposal::{ProposalConfigV0, ProposalV0};
+
+pub mod error;
+use error::ErrorCode;
+
 declare_id!("E6qW37nUQgCcqWxwjSkpeAfJeW17YzFbdrEtVrGPMExM");
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct InitializeRepConfigArgsV0 {
@@ -28,11 +32,12 @@ pub struct InitializeRepConfigArgsV0 {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct RepVoteArgsV0 {
     pub choice: u16,
+    pub amount: u64
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct AddToReceiptArgsV0 {
-    pub amount: u64,
+    pub amount: u64
 }
 
 #[program]
@@ -66,8 +71,20 @@ pub mod reputation {
                 amount: 0,
                 num_active_votes: 0,
                 bump_seed: ctx.bumps["receipt"],
+                choices: vec![]
             });
         }
+        // let receipt = &mut ctx.accounts.receipt;
+
+        // if receipt.choices.iter().all(|choice| *choice != args.choice) {
+        //     receipt.choices.push(args.choice);
+        // }
+
+        // require_gt!(
+        //     ctx.accounts.proposal.max_choices_per_voter,
+        //     receipt.choices.len() as u16,
+        //     ErrorCode::MaxChoicesExceeded
+        // );
 
         ctx.accounts.receipt.amount = ctx
             .accounts
@@ -80,6 +97,9 @@ pub mod reputation {
     }
 
     pub fn vote_v0(ctx: Context<VoteV0>, args: RepVoteArgsV0) -> Result<()> {
+        
+        require_gte!(ctx.accounts.receipt.amount, ctx.accounts.receipt.num_active_votes.checked_add(args.amount).unwrap(), ErrorCode::VoteAmountExceeded);
+
         proposal::cpi::vote_v0(
             CpiContext::new(
                 ctx.accounts.proposal_program.to_account_info(),
@@ -98,6 +118,8 @@ pub mod reputation {
                 weight: u128::from(ctx.accounts.receipt.amount),
             },
         )?;
+
+        ctx.accounts.receipt.num_active_votes.checked_add(args.amount).unwrap();
 
         Ok(())
     }
@@ -145,7 +167,7 @@ pub struct AddToReceiptV0<'info> {
     )]
     pub receipt: Box<Account<'info, ReceiptV0>>,
     ///CHECK in cpi
-    pub proposal: UncheckedAccount<'info>,
+    pub proposal: Account<'info, ProposalV0>,
 
     pub mint: Box<Account<'info, Mint>>,
     pub system_program: Program<'info, System>,
@@ -244,6 +266,7 @@ pub struct ReceiptV0 {
     pub rep_voter: Pubkey,
     pub proposal: Pubkey,
     pub amount: u64,
+    pub choices: Vec<u16>,
     pub num_active_votes: u64,
     pub bump_seed: u8,
 }

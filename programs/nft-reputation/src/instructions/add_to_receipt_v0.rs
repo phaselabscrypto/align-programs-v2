@@ -5,6 +5,10 @@ use proposal::{ProposalConfigV0, ProposalV0};
 
 use crate::{nft_voter_seeds, state::*};
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct AddToReceiptArgsV0 {
+  pub choice: u16,
+}
 #[derive(Accounts)]
 pub struct AddToReceiptV0<'info> {
     #[account(mut)]
@@ -57,8 +61,17 @@ pub struct AddToReceiptV0<'info> {
 }
 
 pub fn handler(ctx: Context<AddToReceiptV0>) -> Result<()> {
+
+  let marker = &mut ctx.accounts.marker;
+  marker.proposal = ctx.accounts.proposal.key();
+  marker.bump_seed = ctx.bumps["marker"];
+  marker.voter = ctx.accounts.voter.key();
+  marker.nft_voter = ctx.accounts.nft_voter.key();
+  marker.mint = ctx.accounts.mint.key();
+
+
     reputation::cpi::add_to_receipt(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.reputation_program.to_account_info(),
             reputation::cpi::accounts::AddToReceiptV0 {
                 payer: ctx.accounts.payer.to_account_info(),
@@ -70,8 +83,9 @@ pub fn handler(ctx: Context<AddToReceiptV0>) -> Result<()> {
                 token_controller: ctx.accounts.token_controller.to_account_info(),
                 mint: ctx.accounts.mint.to_account_info(),
             },
+            &[nft_voter_seeds!(ctx.accounts.nft_voter)],
         ),
-        reputation::AddToReceiptArgsV0 { amount: 1 },
+        reputation::AddToReceiptArgsV0 { amount: 1},
     )?;
 
     Ok(())

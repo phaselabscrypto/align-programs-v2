@@ -8,7 +8,9 @@ use crate::{nft_voter_seeds, state::*};
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct VoteArgsV0 {
     pub choice: u16,
+    pub amount: u64
 }
+
 #[derive(Accounts)]
 pub struct VoteV0<'info> {
     #[account(mut)]
@@ -75,7 +77,7 @@ pub struct VoteV0<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<VoteV0>, args: VoteArgsV0) -> Result<()> {
+pub fn handler(ctx: Context<VoteV0>, args: VoteArgsV0 ) -> Result<()> {
     reputation::cpi::vote_v0(
         CpiContext::new(
             ctx.accounts.reputation_program.to_account_info(),
@@ -95,6 +97,7 @@ pub fn handler(ctx: Context<VoteV0>, args: VoteArgsV0) -> Result<()> {
         ),
         reputation::RepVoteArgsV0 {
             choice: args.choice,
+            amount: args.amount,
         },
     )?;
 

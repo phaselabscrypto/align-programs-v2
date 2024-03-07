@@ -17,7 +17,8 @@ pub struct RelinquishVoteV0<'info> {
     #[account(mut)]
     pub refund: AccountInfo<'info>,
     #[account(
-    mut,
+      mut,
+    close = voter,
     seeds = [b"marker", nft_voter.key().as_ref(), mint.key().as_ref(), proposal.key().as_ref()],
     bump = marker.bump_seed,
     has_one = nft_voter
@@ -68,21 +69,7 @@ pub struct RelinquishVoteV0<'info> {
 }
 
 pub fn handler(ctx: Context<RelinquishVoteV0>, args: RelinquishVoteArgsV0) -> Result<()> {
-    let marker = &mut ctx.accounts.marker;
-    marker.proposal = ctx.accounts.proposal.key();
-    marker.voter = ctx.accounts.voter.key();
 
-    require!(
-        marker.choices.iter().any(|choice| *choice == args.choice),
-        ErrorCode::NoVoteForThisChoice
-    );
-
-    marker.choices = marker
-        .choices
-        .clone()
-        .into_iter()
-        .filter(|c| *c != args.choice)
-        .collect::<Vec<_>>();
 
     proposal::cpi::vote_v0(
         CpiContext::new_with_signer(
@@ -103,10 +90,6 @@ pub fn handler(ctx: Context<RelinquishVoteV0>, args: RelinquishVoteArgsV0) -> Re
             weight: 1_u128,
         },
     )?;
-
-    if marker.choices.len() == 0 {
-        marker.close(ctx.accounts.refund.to_account_info())?;
-    }
 
     Ok(())
 }
