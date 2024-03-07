@@ -17,6 +17,7 @@ mod metaplex;
 pub use error::ErrorCode;
 #[program]
 pub mod org_nft_guard {
+
     use super::*;
 
     pub fn initialize_guard_v0(
@@ -27,6 +28,7 @@ pub mod org_nft_guard {
             name: args.name,
             authority: args.authority,
             guard_type: args.guard_type,
+            bump: ctx.bumps["guard"],
         });
 
         Ok(())
@@ -37,8 +39,26 @@ pub mod org_nft_guard {
         args: InitializeProposalArgsV0,
     ) -> Result<()> {
         let metadata = ctx.accounts.metadata.clone();
-        ctx.accounts.guard.assert_is_valid_token(&metadata)?;
+        let bump = ctx.accounts.guard.bump;
 
+        ctx.accounts.guard.assert_is_valid_token(&metadata)?;
+        organization::cpi::initialize_proposal_v0(
+            CpiContext::new_with_signer(
+                ctx.accounts.organization_program.to_account_info(),
+                organization::cpi::accounts::InitializeProposalV0 {
+                    payer: ctx.accounts.payer.to_account_info(),
+                    guard: ctx.accounts.guard.to_account_info(),
+                    owner: ctx.accounts.owner.to_account_info(),
+                    proposal: ctx.accounts.proposal.to_account_info(),
+                    proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                    organization: ctx.accounts.organization.to_account_info(),
+                    proposal_program: ctx.accounts.proposal_program.to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                },
+                &[&[b"guard", ctx.accounts.guard.name.as_bytes(), &[bump]]],
+            ),
+            args,
+        )?;
         Ok(())
     }
 }
@@ -54,7 +74,7 @@ pub struct InitializeGuardV0<'info> {
       init,
       payer = payer,
       space = 8 + 80 + GuardV0::INIT_SPACE,
-      seeds = [b"nft_guard", args.name.as_bytes()],
+      seeds = [b"guard", args.name.as_bytes()],
       bump
     )]
     pub nft_guard: Box<Account<'info, GuardV0>>,
@@ -109,6 +129,9 @@ pub struct InitializeProposalV0<'info> {
     address = organization.proposal_program
   )]
     pub proposal_program: UncheckedAccount<'info>,
+    /// CHECK:
+    #[account(executable)]
+    pub organization_program: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -127,6 +150,7 @@ pub struct GuardV0 {
     pub name: String,
     pub authority: Pubkey,
     pub guard_type: GuardType,
+    pub bump: u8,
 }
 
 impl GuardV0 {
