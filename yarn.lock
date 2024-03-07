@@ -406,6 +406,16 @@
     "@helium/modular-governance-idls" "^0.0.8"
     "@solana/spl-token" "^0.3.8"
 
+"@helium/organization-sdk@^0.0.8":
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/@helium/organization-sdk/-/organization-sdk-0.0.8.tgz#4738619a929999af6529f21e80e79ab766472322"
+  integrity sha512-T8RElL6338lLyU/PQpCztcCW+qEjLhh9Kf3LHJZFD5IWDt1/1NhoxPFzuW9MquozDPOeSneKOVY3+mrSHl5kBw==
+  dependencies:
+    "@coral-xyz/anchor" "^0.28.0"
+    "@helium/anchor-resolvers" "^0.5.0"
+    "@helium/modular-governance-idls" "^0.0.8"
+    "@helium/proposal-sdk" "^0.0.8"
+
 "@helium/proposal-sdk@^0.0.8":
   version "0.0.8"
   resolved "https://registry.yarnpkg.com/@helium/proposal-sdk/-/proposal-sdk-0.0.8.tgz#44a7daf4bc8541450839d74f814c784eaacfbc7e"
