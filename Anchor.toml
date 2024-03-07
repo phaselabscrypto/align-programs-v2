@@ -1,8 +1,14 @@
+[toolchain]
+
 [features]
 seeds = false
 skip-lint = false
+
 [programs.localnet]
+nft-reputation = "3mYGDQq3NM4xgJAe3khNsicsnnJwHL6kBpLTATXDiMM9"
+org-nft-guard = "H6TVRAz1aQdEENcJDzo7qLVtnChNRWnXeEehZ96MYuM2"
 organization = "GaZVotekguK2dubFsnqHs8LFmKGDfRHBQXrwfVEXPa96"
+organization_wallet = "5pBYHxaoqyLxcgE62b5SZ3kg7rwHiFPNPRAW6U6UkCsT"
 reputation = "E6qW37nUQgCcqWxwjSkpeAfJeW17YzFbdrEtVrGPMExM"
 state_controller = "HEMPVSuZruC176FM63mCk8M86Hgxtims5VNGh1d6M8HX"
 vote_proxy = "4DXSkEgY4NTApL27cfX2tviysBKPrxWa4W3wAWTb4oGo"

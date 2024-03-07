@@ -1,12 +1,12 @@
 [package]
-name = "organization"
+name = "organization-wallet"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "organization"
+name = "organization_wallet"
 
 [features]
 no-entrypoint = []
@@ -16,7 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
+anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["init-if-needed"] }
 anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
 proposal = { path = "../../../modular-governance/programs/proposal", features = ["no-entrypoint", "cpi"] }
-
+organization = { path = "../organization", features = ["no-entrypoint", "cpi"] }

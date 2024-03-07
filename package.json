@@ -10,6 +10,7 @@
         "@helium/nft-voter-sdk": "^0.0.8",
         "@helium/proposal-sdk": "^0.0.8",
         "@metaplex-foundation/js": "^0.20.1",
+        "@solana/spl-token": "^0.4.0",
         "@types/bn.js": "^5.1.0",
         "@types/chai": "^4.3.0",
         "@types/mocha": "^9.0.0",
