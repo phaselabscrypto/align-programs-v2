@@ -1,7 +1,6 @@
-use crate::{metaplex::MetadataAccount};
+use crate::metaplex::MetadataAccount;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
-
 
 use crate::{nft_voter_seeds, state::*};
 

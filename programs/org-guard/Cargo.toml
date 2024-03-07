@@ -1,12 +1,12 @@
 [package]
-name = "organization"
+name = "org-nft-guard"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "organization"
+name = "org_nft_guard"
 
 [features]
 no-entrypoint = []
@@ -17,6 +17,6 @@ default = []
 
 [dependencies]
 anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
-anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
-proposal = { path = "../../../modular-governance/programs/proposal", features = ["no-entrypoint", "cpi"] }
+anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["token"] }
+organization = { path = "../organization", features = ["no-entrypoint", "cpi"] }
 

@@ -1,7 +1,6 @@
 use crate::state::*;
 use anchor_lang::prelude::*;
 
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct InitializeNftVoterArgsV0 {
     pub name: String,

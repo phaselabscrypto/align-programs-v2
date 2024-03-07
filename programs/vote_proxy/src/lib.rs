@@ -234,7 +234,9 @@ impl ProposalStateExt for ProposalState {
 impl Condition {
     pub fn evaluate(&self, proposal: &ProposalV0) -> Result<bool> {
         let derived_value: u64 = match &self.operand {
-            Operand::TransactionValue(_val) => return Err(error!(ErrorCode::FeatureNotImplemented)),
+            Operand::TransactionValue(_val) => {
+                return Err(error!(ErrorCode::FeatureNotImplemented))
+            }
             Operand::ProposalState(val) => *val as u64,
         };
         let state_u8: u8 = proposal.state.to_numeric();

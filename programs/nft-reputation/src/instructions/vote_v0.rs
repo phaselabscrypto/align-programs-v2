@@ -1,9 +1,9 @@
-use crate::{metaplex::MetadataAccount};
+use crate::metaplex::MetadataAccount;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 use proposal::{ProposalConfigV0, ProposalV0};
 
-use crate::{state::*};
+use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct VoteArgsV0 {
