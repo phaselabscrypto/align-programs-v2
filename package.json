@@ -4,13 +4,18 @@
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
     },
     "dependencies": {
-        "@coral-xyz/anchor": "^0.28.0"
+        "@cardinal/common": "^8.0.0",
+        "@coral-xyz/anchor": "^0.28.0",
+        "@metaplex-foundation/mpl-token-auth-rules": "^3.0.3",
+        "@msgpack/msgpack": "^3.0.0-beta2",
+        "@types/chai-as-promised": "^7.1.8",
+        "chai-as-promised": "^7.1.1"
     },
     "devDependencies": {
         "@helium/nft-voter-sdk": "^0.0.8",
         "@helium/organization-sdk": "^0.0.8",
         "@helium/proposal-sdk": "^0.0.8",
-        "@metaplex-foundation/js": "^0.20.1",
+        "@metaplex-foundation/js": "^0.19.4",
         "@solana/spl-token": "^0.4.0",
         "@types/bn.js": "^5.1.0",
         "@types/chai": "^4.3.0",

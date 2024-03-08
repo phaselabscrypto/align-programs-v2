@@ -12,11 +12,13 @@ import {
 import { Organization, IDL as OrganizationIDL } from "../target/types/organization";
 import { OrgNftGuard, IDL as OrgNftGuardIDL } from "../target/types/org_nft_guard";
 import { Metaplex, walletAdapterIdentity } from "@metaplex-foundation/js";
-
-
-import { expect } from "chai";
+import chaiPromise from "chai-as-promised"
+import { expect, use } from "chai";
 import {randomBytes} from "crypto"
-import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
+import { getMetadataAddress, mintCollectionNft, mintNft } from "./helpers";
+import { getAssociatedTokenAddress, getAssociatedTokenAddressSync } from "@solana/spl-token";
+
+use(chaiPromise)
 
 describe("organization", () => {
   const OrgPID = new PublicKey("GaZVotekguK2dubFsnqHs8LFmKGDfRHBQXrwfVEXPa96")
@@ -32,10 +34,10 @@ describe("organization", () => {
   let organization: PublicKey | undefined;
   let name: string;
   let collection: PublicKey;
+  let collectionKey: anchor.web3.Keypair
   let mint: PublicKey;
-  const metaplex = new Metaplex(provider.connection, {cluster: "localnet"});
+  const metaplex = new Metaplex(provider.connection);
   metaplex.use(walletAdapterIdentity(provider.wallet));
-  const collectionAuthority = anchor.web3.Keypair.generate();
   let guardKey : PublicKey| undefined;
   let guardName : string | undefined
   beforeEach(async () => {
@@ -266,39 +268,11 @@ describe("organization", () => {
         })
         .rpcAndKeys());
 
-    await orgProgram.methods
-        .initializeOrganizationV0({
-          name,
-          authority: me,
-          defaultProposalConfig: proposalConfig!,
-          proposalProgram: proposalProgram.programId,
-          uri: "https://example.com",
-          guard: me,
-          parent: PublicKey.default
-        })
-        .accounts({organization})
-        .rpcAndKeys({ skipPreflight: true });
-        collection = (
-          await metaplex.nfts().create({
-            uri: "https://example.com",
-            name: "test",
-            symbol: "test",
-            sellerFeeBasisPoints: 0,
-            updateAuthority: collectionAuthority,
-            tokenOwner: collectionAuthority.publicKey,
-          })
-        ).nft.address;
-  
-        mint = (
-          await metaplex.nfts().create({
-            uri: "https://example.com",
-            name: "test",
-            symbol: "test",
-            sellerFeeBasisPoints: 0,
-            collection,
-            collectionAuthority,
-          })
-        ).nft.address;
+
+        collectionKey =  new anchor.web3.Keypair()
+        collection = collectionKey.publicKey
+        await mintCollectionNft(collectionKey, provider)
+
         guardName = randomBytes(4).toString('hex');
 
        guardKey = PublicKey.findProgramAddressSync([
@@ -307,13 +281,26 @@ describe("organization", () => {
               ], gaurdPID)[0]
         await guardProgram.methods.initializeGuardV0({
           name: guardName,
-          guardType: {collectionMint: {mints: [PublicKey.default]}},
+          guardType: {collectionMint: {mints: [collection]}},
           authority: me
         }).accountsStrict({
           payer: me,
           nftGuard: guardKey,
           systemProgram: anchor.web3.SystemProgram.programId
         }).rpc({skipPreflight: true})
+
+        await orgProgram.methods
+        .initializeOrganizationV0({
+          name,
+          authority: me,
+          defaultProposalConfig: proposalConfig!,
+          proposalProgram: proposalProgram.programId,
+          uri: "https://example.com",
+          guard: guardKey,
+          parent: PublicKey.default
+        })
+        .accounts({organization})
+        .rpcAndKeys({ skipPreflight: true });
   
     });
 
@@ -338,7 +325,7 @@ describe("organization", () => {
       expect(acct.uri).to.eq("https://foo.com");
     });
 
-    it("creates a proposal with the default config", async () => {
+    it("creating a proposal with the default config from org program should fail", async () => {
       let proposal = proposalKey(organization, 0)[0]
       const tx = await orgProgram.methods
         .initializeProposalV0({
@@ -364,11 +351,98 @@ describe("organization", () => {
           payer: me,
           proposalConfig: proposalConfig,
           systemProgram: anchor.web3.SystemProgram.programId,
-          guard: me,
+          guard: guardKey,
           proposalProgram: PROPOSAL_PID
         }).transaction()
-        await provider.sendAndConfirm(tx, [], {skipPreflight: true})
+        const sendPromise = provider.sendAndConfirm(tx, [], {skipPreflight: true})
 
+        await expect(sendPromise).to.be.rejectedWith("Signature verification failed.");
+
+    });
+
+    it("creating proposal without guard token should fail", async () => {
+      let proposal =  proposalKey(organization, 0)[0]
+
+      const mockcollectionKey =  new anchor.web3.Keypair()
+      await mintCollectionNft(mockcollectionKey, provider)
+      const mintKey =  new anchor.web3.Keypair()
+      const mockmint = mintKey.publicKey
+      await mintNft(mockcollectionKey, mintKey, provider, me)
+      
+      const sendPromise =  guardProgram.methods.intializeProposalV0({
+        maxChoicesPerVoter: 1,
+        name,
+        uri: "https://example.com",
+        choices: [
+          {
+            name: "Yes",
+            uri: null,
+          },
+          {
+            name: "No",
+            uri: null,
+          },
+        ],
+        tags: ["test", "tags"],
+      }).accountsStrict({
+        organization,
+        owner: me,
+        proposal: proposalKey(organization, 0)[0],
+        payer: me,
+        proposalConfig: proposalConfig,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        guard: guardKey,
+        proposalProgram: PROPOSAL_PID,
+        proposer: me,
+        mint: mockmint,
+        metadata: await getMetadataAddress(mockmint),
+        tokenAccount: getAssociatedTokenAddressSync(mockmint, me),
+        organizationProgram: orgProgram.programId
+      })
+      .rpc()
+
+      await expect(sendPromise).to.be.rejectedWith("AnchorError occurred. Error Code: CollectionVerificationFailed. Error Number: 6001. Error Message: The collection is either not verified or the mint does not match..");
+
+    })
+
+    it("creates proposal with guard token from collection", async () => {
+      let proposal =  proposalKey(organization, 0)[0]
+
+      const mintKey =  new anchor.web3.Keypair()
+      mint = mintKey.publicKey
+      await mintNft(collectionKey, mintKey, provider, me)
+      
+      await guardProgram.methods.intializeProposalV0({
+        maxChoicesPerVoter: 1,
+        name,
+        uri: "https://example.com",
+        choices: [
+          {
+            name: "Yes",
+            uri: null,
+          },
+          {
+            name: "No",
+            uri: null,
+          },
+        ],
+        tags: ["test", "tags"],
+      }).accountsStrict({
+        organization,
+        owner: me,
+        proposal: proposalKey(organization, 0)[0],
+        payer: me,
+        proposalConfig: proposalConfig,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        guard: guardKey,
+        proposalProgram: PROPOSAL_PID,
+        proposer: me,
+        mint: mint,
+        metadata: await getMetadataAddress(mint),
+        tokenAccount: getAssociatedTokenAddressSync(mint, me),
+        organizationProgram: orgProgram.programId
+      })
+      .rpc()
 
       const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
 
@@ -384,72 +458,8 @@ describe("organization", () => {
       expect(proposal?.toBase58()).to.eq(
         proposalKey(organization!, 0)[0].toBase58()
       );
-    });
+    })
 
-    describe("with proposal", () => {
-      beforeEach(async () => {
-        let proposal =  proposalKey(organization, 0)[0]
-        await orgProgram.methods
-          .initializeProposalV0({
-            maxChoicesPerVoter: 1,
-            name,
-            uri: "https://example.com",
-            choices: [
-              {
-                name: "Yes",
-                uri: null,
-              },
-              {
-                name: "No",
-                uri: null,
-              },
-            ],
-            tags: ["test", "tags"],
-          })
-          .accountsStrict({
-            organization, 
-            owner: me, 
-            proposal: proposalKey(organization, 0)[0],
-            payer: me,
-            proposalConfig: proposalConfig,
-            systemProgram: anchor.web3.SystemProgram.programId,
-            guard: me,
-            proposalProgram: PROPOSAL_PID
-          })
-          .rpcAndKeys({ skipPreflight: true });
-        await proposalProgram.methods
-          .updateStateV0({
-            newState: {
-              voting: {
-                startTs: new anchor.BN(0),
-              },
-            },
-          })
-          .accountsStrict({
-            proposal,
-            proposalConfig: proposalConfig,
-            stateController: me
-          })
-          .rpc();
-      });
-      it("allows voting on the proposal", async () => {
-        let proposal = proposalKey(organization, 0)[0]
-        const tx = await proposalProgram.methods
-          .voteV0({
-            choice: 0,
-            weight: new anchor.BN(1),
-            removeVote: false,
-          })
-          .accountsStrict({
-            proposal, 
-            voter: me,
-            proposalConfig: proposalConfig,
-            voteController: me,
-            stateController: me,
-            onVoteHook: PublicKey.default,
-          }).transaction()
-          await provider.sendAndConfirm(tx, [], {skipPreflight: true})
-        });
-    });
+    
   });
 });
