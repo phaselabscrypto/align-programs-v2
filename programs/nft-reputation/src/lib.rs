@@ -11,7 +11,7 @@ pub use instructions::*;
 
 #[program]
 pub mod nft_reputation {
-    use super::*;
+    pub use super::*;
 
     pub fn initialize_nft_voter_v0(
         ctx: Context<InitializeNftVoterV0>,

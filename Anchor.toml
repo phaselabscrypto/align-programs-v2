@@ -1,10 +1,8 @@
-[toolchain]
-
 [features]
 seeds = false
 skip-lint = false
-
 [programs.localnet]
+multisig-controller = "F6FgmMhLmtCM8836YHnBKtTLhRMcCa3AcZgcM5wXkTJJ"
 nft-reputation = "3mYGDQq3NM4xgJAe3khNsicsnnJwHL6kBpLTATXDiMM9"
 org-nft-guard = "8BgW2REXu3HZU8FWNdVHkvdWVTDDgupmhLJk8dc86xA2"
 organization = "GaZVotekguK2dubFsnqHs8LFmKGDfRHBQXrwfVEXPa96"
