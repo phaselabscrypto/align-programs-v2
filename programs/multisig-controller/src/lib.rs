@@ -95,9 +95,6 @@ pub mod multisig_controller {
     pub fn relinguish_vote_v0(ctx: Context<VoteV0>) -> Result<()> {
         
         require!(ctx.accounts.vote_record.choice.is_some(), error::ErrorCode::NoVoteForThisChoice);
-
-        ctx.accounts.vote_record.choice = None;
-        ctx.accounts.vote_record.voted_at = 0i64;
         
         if ctx.accounts.multisig_config.use_reputation {
             // Not implemented yet
@@ -123,6 +120,9 @@ pub mod multisig_controller {
                 },
             )?;
         }
+
+        ctx.accounts.vote_record.choice = None;
+        ctx.accounts.vote_record.voted_at = 0i64;
 
         Ok(())
     }
@@ -253,7 +253,7 @@ pub struct MultisigConfigV0 {
 
 impl MultisigConfigV0 {
     pub fn space(name : &str, members : &Vec<Pubkey>) -> usize {
-        8 + 4 + name.len() + 1 + 1 + 4 + (members.len() * 32)
+        8 + 32 + 4 + name.len() + 1 + 1 + 4 + (members.len() * 32)
     }
 }
 
@@ -271,7 +271,7 @@ pub struct VoteRecordV0 {
 
 impl VoteRecordV0 {
     pub fn space() -> usize {
-        8 + 32 + 32 + mem::size_of::<u16>() + 1
+        8 + 32 + 32 + mem::size_of::<Option<u16>>() + mem::size_of::<i64>() + 1
     }
 }
 
