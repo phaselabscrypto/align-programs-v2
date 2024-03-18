@@ -1,0 +1,22 @@
+[package]
+name = "multisig-controller"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "multisig_controller"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["init-if-needed"] }
+anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["token"] }
+proposal = { path = "../../../modular-governance/programs/proposal",  features = ["no-entrypoint", "cpi"]  }
+reputation = { path = "../reputation",  features = ["no-entrypoint", "cpi"]  }
