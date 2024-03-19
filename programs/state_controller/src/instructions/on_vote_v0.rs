@@ -53,7 +53,7 @@ pub struct OnVoteV0<'info> {
     pub proposal_config: Account<'info, ProposalConfigV0>,
 }
 
-pub fn handler(ctx: Context<OnVoteV0>, args: VoteArgsV0) -> Result<Option<Vec<u16>>> {
+pub fn handler(ctx: Context<OnVoteV0>, args: VoteArgsV0) -> Result<Option<ResolutionResult>> {
     let mut proposal_pre_vote = ctx.accounts.proposal.clone().into_inner();
     if args.remove_vote {
         proposal_pre_vote.choices[args.choice as usize].weight += args.weight;
@@ -68,6 +68,7 @@ pub fn handler(ctx: Context<OnVoteV0>, args: VoteArgsV0) -> Result<Option<Vec<u1
         .find(|item| item.state == proposal_pre_vote.state)
         .unwrap()
         .resolution(&proposal_pre_vote);
+    
     require!(resolution.is_none(), ErrorCode::ProposalAlreadyResolved);
 
     let proposal = ctx.accounts.proposal.clone().into_inner();

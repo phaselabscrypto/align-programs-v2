@@ -97,23 +97,53 @@ pub fn union<T: std::cmp::Eq + std::hash::Hash + Clone>(a: Vec<T>, b: Vec<T>) ->
     unique_a.union(&unique_b).map(|&x| x.clone()).collect()
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ResolutionResult {
+    pub choices: Vec<u16>,
+    pub next_state: ProposalState
+}
+
+impl Default for ResolutionResult{
+    
+    fn default() -> Self {
+        Self { choices: vec![], next_state: ProposalState::Resolved { choices: vec![], end_ts: 0 } }
+    } 
+
+}
+
+
+impl ResolutionResult{
+
+    fn new(choices: &Vec<u16>, next_state: ProposalState) -> ResolutionResult {
+        ResolutionResult{
+            choices: choices.to_vec(),
+            next_state
+        }
+    }
+}
+
+
+
 impl ResolutionStrategy {
-    pub fn resolution(&self, proposal: &ProposalV0) -> Option<Vec<u16>> {
-        let mut stack: Vec<Option<Vec<u16>>> = vec![];
+    pub fn resolution(&self, proposal: &ProposalV0) -> Option<ResolutionResult> {
+        let mut stack: Vec<Option<ResolutionResult>> = vec![];
         for input in &self.nodes {
             match input {
                 ResolutionNode::Resolved { choices } => {
-                    stack.push(Some(choices.clone()));
+                    stack.push(Some(ResolutionResult::new(choices,ProposalState::Resolved { choices: vec![], end_ts: 0 } )));
                 }
                 ResolutionNode::EndTimestamp { end_ts } => {
                     if Clock::get().unwrap().unix_timestamp > *end_ts {
+                        let choices: Vec<u16> = proposal
+                        .choices
+                        .iter()
+                        .enumerate()
+                        .map(|i| i.0 as u16)
+                        .collect();
+                    
                         stack.push(Some(
-                            proposal
-                                .choices
-                                .iter()
-                                .enumerate()
-                                .map(|i| i.0 as u16)
-                                .collect(),
+                            ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
+                            
                         ));
                     } else {
                         stack.push(None);
@@ -122,14 +152,17 @@ impl ResolutionStrategy {
                 ResolutionNode::OffsetFromStartTs { offset } => match &proposal.state {
                     ProposalState::Voting { start_ts } => {
                         if Clock::get().unwrap().unix_timestamp > start_ts + offset {
+                            let choices: Vec<u16> =  proposal
+                            .choices
+                            .iter()
+                            .enumerate()
+                            .map(|i| i.0 as u16)
+                            .collect();
+
                             stack.push(Some(
-                                proposal
-                                    .choices
-                                    .iter()
-                                    .enumerate()
-                                    .map(|i| i.0 as u16)
-                                    .collect(),
+                                ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
                             ));
+
                         } else {
                             stack.push(None);
                         }
@@ -138,14 +171,17 @@ impl ResolutionStrategy {
                         if name == "Ranking" {
                             let start_ts = i64::from_le_bytes(bin[0..8].try_into().unwrap());
                             if Clock::get().unwrap().unix_timestamp > start_ts + offset {
-                                stack.push(Some(
-                                    proposal
-                                        .choices
-                                        .iter()
-                                        .enumerate()
-                                        .map(|i| i.0 as u16)
-                                        .collect(),
-                                ));
+                                let choices: Vec<u16> =  proposal
+                                .choices
+                                .iter()
+                                .enumerate()
+                                .map(|i| i.0 as u16)
+                                .collect();
+
+                            stack.push(Some(
+                                ResolutionResult::new(&choices, ProposalState::Voting { start_ts: 0 })
+                            ));
+
                             } else {
                                 stack.push(None);
                             }
@@ -155,20 +191,25 @@ impl ResolutionStrategy {
                     }
                     _ => stack.push(None),
                 },
-                ResolutionNode::ChoiceVoteWeight { weight_threshold } => stack.push(Some(
-                    proposal
-                        .choices
-                        .iter()
-                        .enumerate()
-                        .flat_map(|(index, choice)| {
-                            if choice.weight >= *weight_threshold {
-                                Some(index as u16)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect(),
-                )),
+                ResolutionNode::ChoiceVoteWeight { weight_threshold } => {
+                    let choices: Vec<u16> = proposal
+                    .choices
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(index, choice)| {
+                        if choice.weight >= *weight_threshold {
+                            Some(index as u16)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+            
+                    stack.push(Some(
+                        ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
+                    )
+                    
+                )},
                 ResolutionNode::ChoicePercentage { percentage } => {
                     let total_weight = proposal
                         .choices
@@ -190,21 +231,23 @@ impl ResolutionStrategy {
                                 .unwrap()
                         })
                         .unwrap();
+                    let choices: Vec<u16> = proposal
+                    .choices
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(index, choice)| {
+                        if threshold == 0 {
+                            return None;
+                        } else if choice.weight >= threshold {
+                            Some(index as u16)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
                     let ret = Some(
-                        proposal
-                            .choices
-                            .iter()
-                            .enumerate()
-                            .flat_map(|(index, choice)| {
-                                if threshold == 0 {
-                                    return None;
-                                } else if choice.weight >= threshold {
-                                    Some(index as u16)
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect(),
+                        ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
                     );
                     stack.push(ret)
                 }
@@ -212,12 +255,13 @@ impl ResolutionStrategy {
                     let mut vec = proposal.choices.iter().enumerate().collect::<Vec<_>>();
 
                     vec.sort_by(|(_, a), (_, b)| b.weight.cmp(&a.weight));
+                    let choices : Vec<u16> =  vec.iter()
+                    .map(|(index, _)| *index as u16)
+                    .take(*n as usize)
+                    .collect();
 
                     stack.push(Some(
-                        vec.iter()
-                            .map(|(index, _)| *index as u16)
-                            .take(*n as usize)
-                            .collect(),
+                        ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
                     ))
                 }
                 ResolutionNode::And => {
@@ -225,7 +269,10 @@ impl ResolutionStrategy {
                     let right = stack.pop().unwrap();
 
                     let ret = match (left, right) {
-                        (Some(left), Some(right)) => Some(intersect(left, right)),
+                        (Some(left), Some(right)) => {
+                           let res = intersect(left.choices, right.choices);
+                           Some(ResolutionResult::new(&res, ProposalState::Resolved { choices: vec![], end_ts: 0 }))
+                        },
                         _ => None,
                     };
 
@@ -236,9 +283,13 @@ impl ResolutionStrategy {
                     let right = stack.pop().unwrap();
 
                     let ret = match (left, right) {
-                        (Some(left), Some(right)) => Some(union(left, right)),
-                        (Some(left), None) => Some(left),
-                        (None, Some(right)) => Some(right),
+                        (Some(left), Some(right)) =>{ 
+                            
+                            let res= union(left.choices, right.choices);
+                            Some(ResolutionResult::new(&res, ProposalState::Resolved { choices: vec![], end_ts: 0 }))
+                        },
+                        (Some(left), None) => Some(ResolutionResult::new(&left.choices, left.next_state)),
+                        (None, Some(right)) => Some(ResolutionResult::new(&right.choices, right.next_state)),
                         _ => None,
                     };
 
@@ -247,7 +298,7 @@ impl ResolutionStrategy {
                 ResolutionNode::NumResolved { n } => {
                     let curr = stack.get(0).unwrap();
                     match curr {
-                        Some(vec) if vec.len() >= *n as usize => stack.push(Some(vec.clone())),
+                        Some(vec) if vec.choices.len() >= *n as usize => stack.push(Some(vec.clone())),
                         _ => stack.push(None),
                     }
                 }

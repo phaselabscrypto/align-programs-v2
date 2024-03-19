@@ -523,6 +523,15 @@
     "@helium/anchor-resolvers" "^0.5.0"
     "@helium/modular-governance-idls" "^0.0.8"
 
+"@helium/state-controller-sdk@^0.0.8":
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/@helium/state-controller-sdk/-/state-controller-sdk-0.0.8.tgz#f51b63f59ae1916638723de270bfe6ddd82da087"
+  integrity sha512-NDGcJewQp9YaDCoMfk8QYVnFuBI2zD82dffX5ghrDBh5mJvVGH6yZKPa1edJoyqCc277oaYzlnhEQZ1hVDTGKA==
+  dependencies:
+    "@coral-xyz/anchor" "^0.28.0"
+    "@helium/anchor-resolvers" "^0.5.0"
+    "@helium/modular-governance-idls" "^0.0.8"
+
 "@metaplex-foundation/beet-solana@0.4.0":
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet-solana/-/beet-solana-0.4.0.tgz#52891e78674aaa54e0031f1bca5bfbc40de12e8d"
