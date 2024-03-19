@@ -18,7 +18,8 @@ pub struct InitializeResolutionSettingsV0<'info> {
   #[account(
     init,
     payer = payer,
-    space = 8 + 60 + args.settings.iter().map(|strat| mem::size_of::<ResolutionNode>() * strat.nodes.len() + std::mem::size_of::<ResolutionSettingsV0>() ).sum::<usize>(),
+    space = 8 + 60 + 1000,
+    // args.settings.iter().map(|strat| mem::size_of::<ResolutionNode>() * strat.nodes.len() + std::mem::size_of::<ResolutionSettingsV0>() ).sum::<usize>(),
     seeds = [b"resolution_settings", args.name.as_bytes()],
     bump
   )]

@@ -39,13 +39,13 @@ pub fn handler(ctx: Context<ResolveV0>) -> Result<()> {
         .state_controller
         .settings
         .iter()
-        .find(|item| item.state == proposal.state)
+        .find(|item|  proposal.state == item.state.clone().into())
         .unwrap()
         .resolution(&proposal)
     {
        let new_state = match resolution.next_state {
-                ProposalState::Resolved { .. } => ProposalState::Resolved { choices: resolution.choices, end_ts: Clock::get()?.unix_timestamp },
-                ProposalState::Voting { .. } => ProposalState::Voting { start_ts: Clock::get()?.unix_timestamp },
+                StratProposalState::Resolved { .. } => ProposalState::Resolved { choices: resolution.choices, end_ts: Clock::get()?.unix_timestamp },
+                StratProposalState::Voting { .. } => ProposalState::Voting { start_ts: Clock::get()?.unix_timestamp },
                 _ => panic!(),
            };
 

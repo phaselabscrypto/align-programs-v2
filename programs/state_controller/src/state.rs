@@ -1,10 +1,50 @@
 use std::collections::HashSet;
 
 use anchor_lang::prelude::*;
-use proposal::{ProposalState, ProposalV0};
+use proposal::{ProposalState as CpiProposalState, ProposalV0};
 
 pub const PERCENTAGE_DIVISOR: u32 = 1000000000;
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, PartialEq)]
+pub enum StratProposalState {
+  // Allow drafting proposal, in this state can add instructions and such to it
+  #[default]
+  Draft,
+  Cancelled,
+  /// Timestamp of when the voting started
+  Voting {
+    start_ts: i64,
+  },
+  /// The proposal is resolved and the choice specified choice indices won
+  Resolved {
+    choices: Vec<u16>,
+    end_ts: i64,
+  },
+  /// Allow voting controller to set to a custom state,
+  /// this allows for the implementation of more complex
+  /// states like Vetoed, drafts, signing off, etc.
+  /// This could have been an int, but then UIs would need to understand
+  /// the calling contract to grab an enum from it. Rather just have something clean
+  /// even though it takes a bit more space.
+  Custom {
+    name: String,
+    // Allow storing arbitrary data in here
+    bin: Vec<u8>,
+  },
+}
 
+impl From<StratProposalState> for CpiProposalState {
+    fn from(value: StratProposalState) -> Self {
+      match value {
+        StratProposalState::Draft => CpiProposalState::Draft,
+        StratProposalState::Cancelled => CpiProposalState::Cancelled,
+        StratProposalState::Voting{..} => CpiProposalState::Voting {
+          start_ts: Clock::get().unwrap().unix_timestamp,
+        },
+        StratProposalState::Custom { name, bin } => CpiProposalState::Custom { name, bin },
+        StratProposalState::Resolved { choices, end_ts } => CpiProposalState::Resolved { choices, end_ts },
+      }
+    }
+  }
 /**
  * Change resolutionsettings to be able to be dependent on the state of the proposals
  * ie: Ranking -> Resolutionsettings would be nft based up & down vote - variable time limit (where do we hold this info fuck)
@@ -76,7 +116,7 @@ impl ResolutionNode {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct ResolutionStrategy {
     // Match state for different resolving strategies
-    pub state: ProposalState,
+    pub state: StratProposalState,
     pub nodes: Vec<ResolutionNode>,
 }
 
@@ -100,13 +140,13 @@ pub fn union<T: std::cmp::Eq + std::hash::Hash + Clone>(a: Vec<T>, b: Vec<T>) ->
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ResolutionResult {
     pub choices: Vec<u16>,
-    pub next_state: ProposalState
+    pub next_state: StratProposalState
 }
 
 impl Default for ResolutionResult{
     
     fn default() -> Self {
-        Self { choices: vec![], next_state: ProposalState::Resolved { choices: vec![], end_ts: 0 } }
+        Self { choices: vec![], next_state: StratProposalState::Resolved { choices: vec![], end_ts: 0 } }
     } 
 
 }
@@ -114,7 +154,7 @@ impl Default for ResolutionResult{
 
 impl ResolutionResult{
 
-    fn new(choices: &Vec<u16>, next_state: ProposalState) -> ResolutionResult {
+    fn new(choices: &Vec<u16>, next_state: StratProposalState) -> ResolutionResult {
         ResolutionResult{
             choices: choices.to_vec(),
             next_state
@@ -130,7 +170,7 @@ impl ResolutionStrategy {
         for input in &self.nodes {
             match input {
                 ResolutionNode::Resolved { choices } => {
-                    stack.push(Some(ResolutionResult::new(choices,ProposalState::Resolved { choices: vec![], end_ts: 0 } )));
+                    stack.push(Some(ResolutionResult::new(choices,StratProposalState::Resolved { choices: vec![], end_ts: 0 } )));
                 }
                 ResolutionNode::EndTimestamp { end_ts } => {
                     if Clock::get().unwrap().unix_timestamp > *end_ts {
@@ -142,7 +182,7 @@ impl ResolutionStrategy {
                         .collect();
                     
                         stack.push(Some(
-                            ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
+                            ResolutionResult::new(&choices, StratProposalState::Resolved { choices: vec![], end_ts: 0 })
                             
                         ));
                     } else {
@@ -150,7 +190,7 @@ impl ResolutionStrategy {
                     }
                 }
                 ResolutionNode::OffsetFromStartTs { offset } => match &proposal.state {
-                    ProposalState::Voting { start_ts } => {
+                    CpiProposalState::Voting { start_ts } => {
                         if Clock::get().unwrap().unix_timestamp > start_ts + offset {
                             let choices: Vec<u16> =  proposal
                             .choices
@@ -160,14 +200,14 @@ impl ResolutionStrategy {
                             .collect();
 
                             stack.push(Some(
-                                ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
+                                ResolutionResult::new(&choices, StratProposalState::Resolved { choices: vec![], end_ts: 0 })
                             ));
 
                         } else {
                             stack.push(None);
                         }
                     }
-                    ProposalState::Custom { name, bin } => {
+                    CpiProposalState::Custom { name, bin } => {
                         if name == "Ranking" {
                             let start_ts = i64::from_le_bytes(bin[0..8].try_into().unwrap());
                             if Clock::get().unwrap().unix_timestamp > start_ts + offset {
@@ -179,7 +219,7 @@ impl ResolutionStrategy {
                                 .collect();
 
                             stack.push(Some(
-                                ResolutionResult::new(&choices, ProposalState::Voting { start_ts: 0 })
+                                ResolutionResult::new(&choices, StratProposalState::Voting { start_ts: 0 })
                             ));
 
                             } else {
@@ -206,7 +246,7 @@ impl ResolutionStrategy {
                     .collect();
             
                     stack.push(Some(
-                        ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
+                        ResolutionResult::new(&choices, StratProposalState::Resolved { choices: vec![], end_ts: 0 })
                     )
                     
                 )},
@@ -247,7 +287,7 @@ impl ResolutionStrategy {
                     .collect();
 
                     let ret = Some(
-                        ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
+                        ResolutionResult::new(&choices, StratProposalState::Resolved { choices: vec![], end_ts: 0 })
                     );
                     stack.push(ret)
                 }
@@ -261,7 +301,7 @@ impl ResolutionStrategy {
                     .collect();
 
                     stack.push(Some(
-                        ResolutionResult::new(&choices, ProposalState::Resolved { choices: vec![], end_ts: 0 })
+                        ResolutionResult::new(&choices, StratProposalState::Resolved { choices: vec![], end_ts: 0 })
                     ))
                 }
                 ResolutionNode::And => {
@@ -271,7 +311,7 @@ impl ResolutionStrategy {
                     let ret = match (left, right) {
                         (Some(left), Some(right)) => {
                            let res = intersect(left.choices, right.choices);
-                           Some(ResolutionResult::new(&res, ProposalState::Resolved { choices: vec![], end_ts: 0 }))
+                           Some(ResolutionResult::new(&res, StratProposalState::Resolved { choices: vec![], end_ts: 0 }))
                         },
                         _ => None,
                     };
@@ -286,7 +326,7 @@ impl ResolutionStrategy {
                         (Some(left), Some(right)) =>{ 
                             
                             let res= union(left.choices, right.choices);
-                            Some(ResolutionResult::new(&res, ProposalState::Resolved { choices: vec![], end_ts: 0 }))
+                            Some(ResolutionResult::new(&res, StratProposalState::Resolved { choices: vec![], end_ts: 0 }))
                         },
                         (Some(left), None) => Some(ResolutionResult::new(&left.choices, left.next_state)),
                         (None, Some(right)) => Some(ResolutionResult::new(&right.choices, right.next_state)),
@@ -310,7 +350,6 @@ impl ResolutionStrategy {
 }
 
 #[account]
-#[derive(Default)]
 pub struct ResolutionSettingsV0 {
     pub name: String,
     pub settings: Vec<ResolutionStrategy>,

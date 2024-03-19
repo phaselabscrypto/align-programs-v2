@@ -1,16 +1,17 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Proposal, IDL as ProposalIDL  } from "./idls/proposal";
-import { StateController } from "../target/types/state_controller";
+import { StateController, IDL  } from "../target/types/state_controller";
 import { PublicKey } from "@solana/web3.js";
 import {
   PROGRAM_ID as PROPOSAL_PID,
   init as initProposal,
+  proposalKey,
 } from "@helium/proposal-sdk";
 import {
-  PROGRAM_ID,
   SettingsBuilder,
   init,
+  resolutionSettingsKey,
   settings,
 } from "@helium/state-controller-sdk";
 import {randomBytes} from "crypto"
@@ -31,8 +32,8 @@ describe("state-controller", () => {
   beforeEach(async () => {
     name = randomBytes(4).toString('hex');
     // @ts-ignore
-    program = await new Program(
-      anchor.workspace.StateController.idl,
+    program = new Program(
+      IDL,
       PROGRAM_ID,
       provider
     );
@@ -50,18 +51,26 @@ describe("state-controller", () => {
     let proposal: PublicKey | undefined;
     let resolutionSettings: PublicKey | undefined;
     beforeEach(async () => {
+        resolutionSettings = resolutionSettingsKey(name, PROGRAM_ID)[0]
+        proposal = proposalKey(me, Buffer.from(name, "utf-8"))[0]
 
-      ({
-        pubkeys: { resolutionSettings },
-      } = await program.methods
+       const tx = await program.methods
         .initializeResolutionSettingsV0({
           name,
           settings: [{
-            state: {voting: {}},
-            nodes,
+            state: {voting: {ts: {}}},
+            nodes: [{resolved: {choices: [1]}}],
           }],
         })
-        .rpcAndKeys({ skipPreflight: true }));
+        .accountsStrict({
+            payer: me,
+            resolutionSettings,
+            systemProgram: anchor.web3.SystemProgram.programId
+        })
+        .transaction();
+
+        await provider.sendAndConfirm(tx, [], {skipPreflight: true});
+
       ({
         pubkeys: { proposalConfig },
       } = await proposalProgram.methods
@@ -92,14 +101,26 @@ describe("state-controller", () => {
           ],
           tags: ["test", "tags"],
         })
-        .accounts({ proposalConfig })
+        .accountsStrict({
+            proposalConfig, proposal,
+            payer: me,
+            namespace: me,
+            owner: me,
+            systemProgram: anchor.web3.SystemProgram.programId
+        })
         .rpcAndKeys({ skipPreflight: true }));
 
       await program.methods
         .updateStateV0({
           newState: { voting: {} },
         })
-        .accounts({ proposal })
+        .accountsStrict({
+            proposal,
+            owner: me,
+            proposalConfig,
+            stateController: resolutionSettings,
+            proposalProgram: proposalProgram.programId
+        })
         .rpc();
     });
 
@@ -109,7 +130,11 @@ describe("state-controller", () => {
       });
 
       it("resolves to the choice selected", async () => {
-        await program.methods.resolveV0().accounts({ proposal }).rpc();
+        await program.methods.resolveV0().accountsStrict({
+            proposal, stateController: resolutionSettings,
+            proposalConfig,
+            proposalProgram: proposalProgram.programId
+        }).rpc();
 
         const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
         expect(acct.state.resolved?.choices).to.deep.eq([1]);

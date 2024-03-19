@@ -65,7 +65,7 @@ pub fn handler(ctx: Context<OnVoteV0>, args: VoteArgsV0) -> Result<Option<Resolu
         .state_controller
         .settings
         .iter()
-        .find(|item| item.state == proposal_pre_vote.state)
+        .find(|item| proposal_pre_vote.state == item.state.clone().into() )
         .unwrap()
         .resolution(&proposal_pre_vote);
     
@@ -77,7 +77,7 @@ pub fn handler(ctx: Context<OnVoteV0>, args: VoteArgsV0) -> Result<Option<Resolu
         .state_controller
         .settings
         .iter()
-        .find(|item| item.state == proposal_pre_vote.state)
+        .find(|item| proposal_pre_vote.state == item.state.clone().into())
         .unwrap()
         .resolution(&proposal);
 
