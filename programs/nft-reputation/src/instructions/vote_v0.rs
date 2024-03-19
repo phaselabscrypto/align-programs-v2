@@ -15,39 +15,9 @@ pub struct VoteArgsV0 {
 pub struct VoteV0<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    #[account(
-    init_if_needed,
-    payer = payer,
-    space = 8 + 60 + std::mem::size_of::<VoteMarkerV0>(),
-    seeds = [b"marker", nft_voter.key().as_ref(), mint.key().as_ref(), proposal.key().as_ref()],
-    bump
-  )]
-    pub marker: Box<Account<'info, VoteMarkerV0>>,
     pub nft_voter: Box<Account<'info, NftVoterV0>>,
     pub voter: Signer<'info>,
     pub vote_controller: Signer<'info>,
-    pub mint: Box<Account<'info, Mint>>,
-    #[account(
-    seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
-    seeds::program = MetadataAccount::owner(),
-    bump,
-    constraint = metadata.collection.as_ref().map(|col|
-      col.verified &&
-      nft_voter.collections.iter().any(|collection_item| collection_item.mint == col.key)
-  ).unwrap_or_else(|| false)
-  )]
-    pub metadata: Box<Account<'info, MetadataAccount>>,
-    #[account(
-    associated_token::authority = voter,
-    associated_token::mint = mint,
-    constraint = token_account.amount == 1,
-  )]
-    pub token_account: Box<Account<'info, TokenAccount>>,
-    #[account(
-    mut,
-    has_one = proposal_config,
-    owner = proposal_program.key(),
-  )]
     pub proposal: Account<'info, ProposalV0>,
     #[account(
     has_one = on_vote_hook,

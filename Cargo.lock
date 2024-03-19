@@ -1198,7 +1198,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nft-reputation"
+name = "multisig-controller"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
@@ -1208,12 +1208,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "nft-voter"
+name = "nft-reputation"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
  "proposal",
+ "reputation",
 ]
 
 [[package]]
@@ -2251,7 +2252,7 @@ name = "vote_proxy"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
- "nft-voter",
+ "nft-reputation",
  "proposal",
  "token-voter",
 ]

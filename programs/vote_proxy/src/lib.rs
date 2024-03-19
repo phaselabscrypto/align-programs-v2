@@ -23,6 +23,8 @@ pub struct InitializeProxyArgsV0 {
 #[program]
 pub mod vote_proxy {
 
+    use nft_reputation::nft_reputation;
+
     use super::*;
 
     pub fn initialize_proxy_v0(
@@ -51,6 +53,7 @@ pub mod vote_proxy {
     pub fn vote_v0<'info>(
         ctx: Context<'_, '_, '_, 'info, VoteV0<'info>>,
         choice: u16,
+        amount: u64
     ) -> Result<()> {
         let proxy = &ctx.accounts.proxy;
         let proposal = &ctx.accounts.proposal;
@@ -60,25 +63,24 @@ pub mod vote_proxy {
                 let controller_pubkey = conditional.controller_pubkey;
                 let program_info = ctx.remaining_accounts.last().unwrap();
                 match controller_pubkey {
-                    pubkey if pubkey == nft_voter::id() => {
+                    pubkey if pubkey == nft_reputation::id() => {
                         let name = ctx.accounts.proxy.name.as_bytes();
                         let bump = ctx.accounts.proxy.bump;
                         let seeds = [b"proxy", name, &[bump]];
                         let signers = vec![seeds.as_slice()];
 
-                        nft_voter::cpi::vote_v1(
+                        nft_reputation::cpi::vote_v0(
                             CpiContext::new_with_signer(
                                 program_info.to_owned(),
-                                nft_voter::cpi::accounts::VoteV1 {
+                                nft_reputation::cpi::accounts::VoteV0 {
                                     payer: ctx.accounts.payer.to_account_info(),
-                                    marker: ctx.remaining_accounts[0].clone(),
                                     nft_voter: ctx.remaining_accounts[1].clone(),
                                     voter: ctx.accounts.voter.to_account_info(),
-                                    mint: ctx.remaining_accounts[2].clone(),
-                                    metadata: ctx.remaining_accounts[3].clone(),
-                                    token_account: ctx.remaining_accounts[4].clone(),
                                     proposal: proposal.to_account_info(),
                                     proposal_config: ctx.accounts.proposal_config.to_account_info(),
+                                    rep_config: ctx.remaining_accounts[2].clone(),
+                                    receipt: ctx.remaining_accounts[3].clone(),
+                                    reputation_program: ctx.remaining_accounts[4].clone(),
                                     state_controller: ctx
                                         .accounts
                                         .state_controller
@@ -93,7 +95,7 @@ pub mod vote_proxy {
                                 },
                                 &signers,
                             ),
-                            nft_voter::VoteArgsV0 { choice },
+                            nft_reputation::VoteArgsV0 { choice, amount },
                         )?;
                     }
                     _ => return Err(ErrorCode::InvalidController.into()),
@@ -210,7 +212,7 @@ impl Default for ConditionalController {
     fn default() -> Self {
         return Self {
             condition: Condition::default(),
-            controller_pubkey: nft_voter::id(),
+            controller_pubkey: nft_reputation::id(),
         };
     }
 }
