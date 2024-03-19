@@ -61,7 +61,7 @@ describe("multisig", () => {
           } = await proposalProgram.methods
             .initializeProposalConfigV0({
               name,
-              voteController: me,
+              voteController: multisig,
               stateController: me,
               onVoteHook: PublicKey.default,
             })
@@ -115,7 +115,7 @@ describe("multisig", () => {
             voter.publicKey.toBuffer()
           ], msProgram.programId)[0]
         
-        await msProgram.methods
+        const tx = await msProgram.methods
           .voteV0({
             choice: 0,
           })
@@ -124,7 +124,7 @@ describe("multisig", () => {
               payer: me,
               proposalConfig: proposalConfig,
               systemProgram: web3.SystemProgram.programId,
-              voteController: me,
+              voteController: multisig,
               voter: members[0].publicKey,
               stateController: me,
               onVoteHook: PublicKey.default,
@@ -132,23 +132,26 @@ describe("multisig", () => {
               voteRecord,
               proposalProgram: proposalProgram.programId
           })
-          .signers([voter])
-          .rpcAndKeys({ skipPreflight: true });
-  
+          .transaction();
+          await provider.sendAndConfirm(tx, [voter], {skipPreflight: true})
+
         let acct = await proposalProgram.account.proposalV0.fetch(proposal!);
         expect(acct.choices[0].weight.toNumber()).to.eq(1);
+      
         let markerA = await msProgram.account.voteRecordV0.fetchNullable(voteRecord!);
         expect(markerA?.choice).to.deep.eq(0);
         expect(markerA.votedAt.toNumber()).to.not.eq(0);
+        expect(markerA?.voter.toString()).to.eq(members[0].publicKey.toBase58())
+        expect(markerA?.proposal.toBase58()).to.eq(proposal.toBase58())
 
-        await msProgram.methods
+        const tx2 = await msProgram.methods
           .relinguishVoteV0()
           .accounts({
             proposal,
             payer: me,
             proposalConfig: proposalConfig,
             systemProgram: web3.SystemProgram.programId,
-            voteController: me,
+            voteController: multisig,
             voter: members[0].publicKey,
             stateController: me,
             onVoteHook: PublicKey.default,
@@ -156,9 +159,9 @@ describe("multisig", () => {
             voteRecord,
             proposalProgram: proposalProgram.programId
           })
-          .signers([voter])
-          .rpc({ skipPreflight: true });
-  
+          .transaction();
+          await provider.sendAndConfirm(tx2, [voter], {skipPreflight: true})
+
         acct = await proposalProgram.account.proposalV0.fetch(proposal!);
         expect(acct.choices[0].weight.toNumber()).to.eq(0);
         markerA = await msProgram.account.voteRecordV0.fetchNullable(voteRecord!);
