@@ -352,8 +352,9 @@ impl ResolutionStrategy {
 #[account]
 pub struct ResolutionSettingsV0 {
     pub name: String,
-    pub settings: Vec<ResolutionStrategy>,
     pub bump_seed: u8,
+    pub settings: Vec<ResolutionStrategy>,
+
 }
 
 #[macro_export]

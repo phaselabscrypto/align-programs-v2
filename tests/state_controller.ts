@@ -121,7 +121,7 @@ describe("state-controller", () => {
             stateController: resolutionSettings,
             proposalProgram: proposalProgram.programId
         })
-        .rpc();
+        .rpc({skipPreflight: true});
     });
 
     describe("with resolved", () => {
@@ -141,245 +141,253 @@ describe("state-controller", () => {
       });
     });
 
-    // describe("with end passed", () => {
-    //   before(async () => {
-    //     nodes = settings().endTimestamp(new anchor.BN(1)).build();
-    //   });
+    describe("with end passed", () => {
+      before(async () => {
+        nodes = settings().endTimestamp(new anchor.BN(1)).build();
+      });
 
-    //   it("resolves to all choices", async () => {
-    //     await program.methods.resolveV0().accounts({ proposal }).rpc();
+      it("resolves to all choices", async () => {
+        await program.methods.resolveV0().accounts({   proposal, stateController: resolutionSettings,
+            proposalConfig,
+            proposalProgram: proposalProgram.programId }).rpc();
 
-    //     const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([0, 1]);
-    //   });
-    // });
+        const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([0, 1]);
+      });
+    });
 
-    // describe("with end not passed", () => {
-    //   before(async () => {
-    //     nodes = settings().endTimestamp(new anchor.BN(2688657226)).build();
-    //   });
+    describe("with end not passed", () => {
+      before(async () => {
+        nodes = settings().endTimestamp(new anchor.BN(2688657226)).build();
+      });
 
-    //   it("not resolve", async () => {
-    //     await program.methods.resolveV0().accounts({ proposal }).rpc();
+      it("not resolve", async () => {
+        await program.methods.resolveV0().accounts({ proposal, stateController: resolutionSettings,
+            proposalConfig,
+            proposalProgram: proposalProgram.programId }).rpc();
 
-    //     const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(Boolean(acct.state.voting)).to.be.true;
-    //   });
-    // });
+        const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(Boolean(acct.state.voting)).to.be.true;
+      });
+    });
 
-    // describe("with offset", () => {
-    //   before(async () => {
-    //     nodes = settings().offsetFromStartTs(new anchor.BN(1)).build();
-    //   });
+    describe("with offset", () => {
+      before(async () => {
+        nodes = settings().offsetFromStartTs(new anchor.BN(1)).build();
+      });
 
-    //   it("resolves to all choices", async () => {
-    //     await sleep(3000);
-    //     await program.methods.resolveV0().accounts({ proposal }).rpc();
+      it("resolves to all choices", async () => {
+        await sleep(3000);
+        await program.methods.resolveV0().accounts({ proposal, stateController: resolutionSettings,
+            proposalConfig,
+            proposalProgram: proposalProgram.programId }).rpc();
 
-    //     const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([0, 1]);
-    //   });
-    // });
+        const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([0, 1]);
+      });
+    });
 
-    // describe("with choice vote weight", () => {
-    //   before(async () => {
-    //     nodes = settings()
-    //       .and(
-    //         settings().choiceVoteWeight(new anchor.BN(1)),
-    //         settings().numResolved()
-    //       )
-    //       .build();
-    //   });
+    describe("with choice vote weight", () => {
+      before(async () => {
+        nodes = settings()
+          .and(
+            settings().choiceVoteWeight(new anchor.BN(1)),
+            settings().numResolved()
+          )
+          .build();
+      });
 
-    //   it("resolves to the choices with that weight", async () => {
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 0,
-    //         weight: new anchor.BN(1),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+      it("resolves to the choices with that weight", async () => {
+        await proposalProgram.methods
+          .voteV0({
+            choice: 0,
+            weight: new anchor.BN(1),
+            removeVote: false,
+          })
+          .accounts({ proposal, stateController: resolutionSettings,
+            proposalConfig,
+            voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([0]);
-    //   });
-    // });
+        const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([0]);
+      });
+    });
 
-    // describe("with choice percentage", () => {
-    //   before(async () => {
-    //     nodes = settings()
-    //       .and(settings().choicePercentage(51), settings().numResolved(1))
-    //       .build();
-    //   });
+    describe("with choice percentage", () => {
+      before(async () => {
+        nodes = settings()
+          .and(settings().choicePercentage(51), settings().numResolved(1))
+          .build();
+      });
 
-    //   it("resolves to the choices with that percentage", async () => {
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 1,
-    //         weight: new anchor.BN(1),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+      it("resolves to the choices with that percentage", async () => {
+        await proposalProgram.methods
+          .voteV0({
+            choice: 1,
+            weight: new anchor.BN(1),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([1]);
-    //   });
-    // });
+        const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([1]);
+      });
+    });
 
-    // describe("with top", () => {
-    //   before(async () => {
-    //     // Note that top would immediately resolve.
-    //     // To prevent that, we need to ensure at least 1 choice
-    //     // has been voted on.
-    //     nodes = settings()
-    //       .and(
-    //         settings().and(
-    //           settings().choicePercentage(51),
-    //           settings().numResolved(1)
-    //         ),
-    //         settings().top()
-    //       )
-    //       .build();
-    //   });
+    describe("with top", () => {
+      before(async () => {
+        // Note that top would immediately resolve.
+        // To prevent that, we need to ensure at least 1 choice
+        // has been voted on.
+        nodes = settings()
+          .and(
+            settings().and(
+              settings().choicePercentage(51),
+              settings().numResolved(1)
+            ),
+            settings().top()
+          )
+          .build();
+      });
 
-    //   it("resolves to the max choice", async () => {
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 1,
-    //         weight: new anchor.BN(1),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+      it("resolves to the max choice", async () => {
+        await proposalProgram.methods
+          .voteV0({
+            choice: 1,
+            weight: new anchor.BN(1),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([1]);
-    //   });
-    // });
+        const acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([1]);
+      });
+    });
 
-    // describe("top choice with minimum vote weight of 5 at the end time", () => {
-    //   before(async () => {
-    //     nodes = settings()
-    //       .and(
-    //         settings().offsetFromStartTs(new anchor.BN(5)),
-    //         settings().and(
-    //           settings().and(
-    //             settings().choiceVoteWeight(new anchor.BN(5)),
-    //             settings().numResolved(1)
-    //           ),
-    //           settings().top()
-    //         )
-    //       )
-    //       .build();
-    //   });
+    describe("top choice with minimum vote weight of 5 at the end time", () => {
+      before(async () => {
+        nodes = settings()
+          .and(
+            settings().offsetFromStartTs(new anchor.BN(5)),
+            settings().and(
+              settings().and(
+                settings().choiceVoteWeight(new anchor.BN(5)),
+                settings().numResolved(1)
+              ),
+              settings().top()
+            )
+          )
+          .build();
+      });
 
-    //   it("resolves to the max choice when there is enough weight", async () => {
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 1,
-    //         weight: new anchor.BN(5),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+      it("resolves to the max choice when there is enough weight", async () => {
+        await proposalProgram.methods
+          .voteV0({
+            choice: 1,
+            weight: new anchor.BN(5),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     let acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(Boolean(acct.state.voting)).to.be.true;
+        let acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(Boolean(acct.state.voting)).to.be.true;
 
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 0,
-    //         weight: new anchor.BN(3),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+        await proposalProgram.methods
+          .voteV0({
+            choice: 0,
+            weight: new anchor.BN(3),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     await sleep(10000);
+        await sleep(10000);
 
-    //     await program.methods.resolveV0().accounts({ proposal }).rpc();
+        await program.methods.resolveV0().accounts({ proposal }).rpc();
 
-    //     acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([1]);
-    //   });
+        acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([1]);
+      });
 
-    //   it("resolves to no values when not enough weight", async () => {
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 1,
-    //         weight: new anchor.BN(2),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+      it("resolves to no values when not enough weight", async () => {
+        await proposalProgram.methods
+          .voteV0({
+            choice: 1,
+            weight: new anchor.BN(2),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     let acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(Boolean(acct.state.voting)).to.be.true;
+        let acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(Boolean(acct.state.voting)).to.be.true;
 
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 0,
-    //         weight: new anchor.BN(3),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+        await proposalProgram.methods
+          .voteV0({
+            choice: 0,
+            weight: new anchor.BN(3),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     await sleep(10000);
-    //     await program.methods.resolveV0().accounts({ proposal }).rpc();
+        await sleep(10000);
+        await program.methods.resolveV0().accounts({ proposal }).rpc();
 
-    //     acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([]);
-    //   });
-    // });
+        acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([]);
+      });
+    });
 
-    // describe("helium flavor governance", () => {
-    //   before(async () => {
-    //     nodes = settings()
-    //       .and(
-    //         settings().offsetFromStartTs(new anchor.BN(5)),
-    //         settings().and(
-    //           settings().and(
-    //             settings().choiceVoteWeight(new anchor.BN(5)),
-    //             settings().choicePercentage(66.6)
-    //           ),
-    //           settings().top()
-    //         )
-    //       )
-    //       .build();
-    //   });
+    describe("helium flavor governance", () => {
+      before(async () => {
+        nodes = settings()
+          .and(
+            settings().offsetFromStartTs(new anchor.BN(5)),
+            settings().and(
+              settings().and(
+                settings().choiceVoteWeight(new anchor.BN(5)),
+                settings().choicePercentage(66.6)
+              ),
+              settings().top()
+            )
+          )
+          .build();
+      });
 
-    //   it("resolves to the max choice when there is enough weight", async () => {
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 1,
-    //         weight: new anchor.BN(5),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+      it("resolves to the max choice when there is enough weight", async () => {
+        await proposalProgram.methods
+          .voteV0({
+            choice: 1,
+            weight: new anchor.BN(5),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     let acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(Boolean(acct.state.voting)).to.be.true;
+        let acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(Boolean(acct.state.voting)).to.be.true;
 
-    //     await proposalProgram.methods
-    //       .voteV0({
-    //         choice: 0,
-    //         weight: new anchor.BN(1),
-    //         removeVote: false,
-    //       })
-    //       .accounts({ proposal, voter: me })
-    //       .rpc({ skipPreflight: true });
+        await proposalProgram.methods
+          .voteV0({
+            choice: 0,
+            weight: new anchor.BN(1),
+            removeVote: false,
+          })
+          .accounts({ proposal, voter: me })
+          .rpc({ skipPreflight: true });
 
-    //     await sleep(10000);
-    //     await program.methods.resolveV0().accounts({ proposal }).rpc();
+        await sleep(10000);
+        await program.methods.resolveV0().accounts({ proposal }).rpc();
 
-    //     acct = await proposalProgram.account.proposalV0.fetch(proposal!);
-    //     expect(acct.state.resolved?.choices).to.deep.eq([1]);
-    //   });
-    // });
+        acct = await proposalProgram.account.proposalV0.fetch(proposal!);
+        expect(acct.state.resolved?.choices).to.deep.eq([1]);
+      });
+    });
   });
 });
 
