@@ -15,7 +15,8 @@ pub mod error;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct InitializeMultisigArgsV0 {
     pub name: String,
-    pub authority: Pubkey,
+    // We are removing this and making it immutable to stop any chance of exploit
+    // pub authority: Pubkey,
     pub use_reputation: bool,
     pub members: Vec<Pubkey>,
 }
@@ -34,7 +35,6 @@ pub mod multisig_controller {
     pub fn initialize_multisig_config_v0(ctx: Context<InitializeMultisigConfigV0>, args: InitializeMultisigArgsV0) -> Result<()> {
         
         ctx.accounts.multisig_config.set_inner(MultisigConfigV0 {
-            authority: args.authority,
             name: args.name,
             members: args.members,
             bump: ctx.bumps["multisig_config"],
@@ -266,7 +266,8 @@ pub struct RelinguishVoteV0<'info> {
 
 #[account]
 pub struct MultisigConfigV0 {
-    pub authority: Pubkey,
+    // We are removing this and making it immutable to stop any chance of exploit
+    // pub authority: Pubkey,
     pub name: String,
     pub use_reputation: bool,
     pub bump: u8,
@@ -275,7 +276,7 @@ pub struct MultisigConfigV0 {
 
 impl MultisigConfigV0 {
     pub fn space(name : &str, members : &Vec<Pubkey>) -> usize {
-        8 + 32 + 4 + name.len() + 1 + 1 + 4 + (members.len() * 32)
+        8 + 4 + name.len() + 1 + 1 + 4 + (members.len() * 32)
     }
 }
 
