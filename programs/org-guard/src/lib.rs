@@ -10,7 +10,8 @@ declare_id!("8BgW2REXu3HZU8FWNdVHkvdWVTDDgupmhLJk8dc86xA2");
 pub struct InitializeGuardArgsV0 {
     pub name: String,
     pub guard_type: GuardType,
-    pub authority: Pubkey,
+    // We are removing this and making it immutable to stop any chance of exploit
+    // pub authority: Pubkey,
 }
 
 #[derive(InitSpace, AnchorSerialize, AnchorDeserialize, Clone, Default)]
@@ -47,7 +48,6 @@ pub mod org_nft_guard {
     ) -> Result<()> {
         ctx.accounts.nft_guard.set_inner(GuardV0 {
             name: args.name,
-            authority: args.authority,
             guard_type: args.guard_type,
             bump: ctx.bumps["nft_guard"],
         });
@@ -181,7 +181,8 @@ pub enum GuardType {
 pub struct GuardV0 {
     #[max_len(32)]
     pub name: String,
-    pub authority: Pubkey,
+    // We are removing this and making it immutable to stop any chance of exploit
+    // pub authority: Pubkey,
     pub guard_type: GuardType,
     pub bump: u8,
 }
