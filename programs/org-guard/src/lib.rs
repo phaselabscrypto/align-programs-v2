@@ -55,7 +55,7 @@ pub mod org_nft_guard {
         Ok(())
     }
 
-    pub fn intialize_proposal_v0(
+    pub fn initialize_proposal_v0(
         ctx: Context<InitializeProposalV0>,
         args: InitializeProposalArgsV0,
     ) -> Result<()> {
