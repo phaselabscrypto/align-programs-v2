@@ -16,7 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["init-if-needed"] }
+anchor-lang = { version = "0.30.0", features = ["init-if-needed"] }
 proposal = { path = "../../../modular-governance/programs/proposal", features = ["no-entrypoint", "cpi"] }
 nft-reputation = {path = "../nft-reputation", features = ["no-entrypoint", "cpi"] }
 token-voter = {path = "../../../modular-governance/programs/token_voter", features = ["no-entrypoint", "cpi"] }

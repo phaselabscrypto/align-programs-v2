@@ -16,6 +16,6 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
-anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
+anchor-lang = "0.30.0"
+anchor-spl = "0.30.0"
 proposal = { path = "../../../modular-governance/programs/proposal", features = ["no-entrypoint", "cpi"] }
