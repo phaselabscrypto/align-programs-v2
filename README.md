@@ -1,6 +1,6 @@
 # Align V2 Programs
 
-| Program Name | Devnet Address | Description |
+| Program Name | Address | Description |
 | ------------- | ------------- | ------------|
 | org-guard | a2grdoc6VNAxZ5TrbGUR1bvH6Z1AewtuwmbM8573Wis |
 | organization | a2orghRV2Bj2fyqFQtYeBZ9972raZyrvXVf5tQ9jYMK |
