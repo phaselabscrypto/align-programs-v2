@@ -5,7 +5,7 @@ use anchor_spl::token::{Mint, TokenAccount};
 use metaplex::MetadataAccount;
 use organization::state::OrganizationV0;
 
-declare_id!("8BgW2REXu3HZU8FWNdVHkvdWVTDDgupmhLJk8dc86xA2");
+declare_id!("a2grdoc6VNAxZ5TrbGUR1bvH6Z1AewtuwmbM8573Wis");
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitializeGuardArgsV0 {
     pub name: String,

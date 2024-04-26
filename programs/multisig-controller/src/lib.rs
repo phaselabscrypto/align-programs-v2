@@ -9,7 +9,7 @@ use std::mem;
 use anchor_lang::prelude::*;
 use proposal::{ProposalConfigV0, ProposalV0};
 
-declare_id!("F6FgmMhLmtCM8836YHnBKtTLhRMcCa3AcZgcM5wXkTJJ");
+declare_id!("a2mscRXReHpSr44YPgHSedpyvgExTdiDufHqcFNmZWx");
 pub mod error;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]

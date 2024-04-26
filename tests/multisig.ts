@@ -12,7 +12,7 @@ import { expect } from "chai";
 
 describe("multisig", () => {
       // Configure the client to use the local cluster.
-  const MultiSigPID = new PublicKey("F6FgmMhLmtCM8836YHnBKtTLhRMcCa3AcZgcM5wXkTJJ")
+  const MultiSigPID = new PublicKey("a2mscRXReHpSr44YPgHSedpyvgExTdiDufHqcFNmZWx")
  setProvider(AnchorProvider.env());
   const provider = getProvider() as AnchorProvider;
   const me = provider.wallet.publicKey;

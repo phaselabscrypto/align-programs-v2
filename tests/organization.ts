@@ -21,8 +21,8 @@ import { getAssociatedTokenAddress, getAssociatedTokenAddressSync } from "@solan
 use(chaiPromise)
 
 describe("organization", () => {
-  const OrgPID = new PublicKey("GaZVotekguK2dubFsnqHs8LFmKGDfRHBQXrwfVEXPa96")
-  const gaurdPID = new PublicKey("8BgW2REXu3HZU8FWNdVHkvdWVTDDgupmhLJk8dc86xA2")
+  const OrgPID = new PublicKey("a2orghRV2Bj2fyqFQtYeBZ9972raZyrvXVf5tQ9jYMK")
+  const gaurdPID = new PublicKey("a2grdoc6VNAxZ5TrbGUR1bvH6Z1AewtuwmbM8573Wis")
 
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());

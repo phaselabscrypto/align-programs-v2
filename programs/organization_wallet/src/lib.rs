@@ -7,7 +7,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("5pBYHxaoqyLxcgE62b5SZ3kg7rwHiFPNPRAW6U6UkCsT");
+declare_id!("a2orwPjEDJyDWSx3saqsHu6JDNdLn4q9Er633syP2xh");
 
 #[program]
 pub mod organization_wallet {
