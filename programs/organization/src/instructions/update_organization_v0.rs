@@ -8,6 +8,7 @@ pub struct UpdateOrganizationArgsV0 {
     pub default_proposal_config: Option<Pubkey>,
     pub proposal_program: Option<Pubkey>,
     pub uri: Option<String>,
+    pub guard: Option<Pubkey>,
 }
 
 #[derive(Accounts)]
@@ -30,6 +31,9 @@ pub fn handler(ctx: Context<UpdateOrganizationV0>, args: UpdateOrganizationArgsV
     }
     if let Some(uri) = args.uri {
         ctx.accounts.organization.uri = uri;
+    }
+    if let Some(guard) = args.guard {
+        ctx.accounts.organization.guard = guard;
     }
     Ok(())
 }
