@@ -251,7 +251,7 @@ impl GuardV0 {
             GuardType::CollectionMint { mints } => {
                 let token_config = mints.iter().find(|config| config.mint == token.mint);
                 if let Some(config) = token_config {
-                    if token.amount / config.weight_reciprocal >= 1 {
+                    if (token.amount / config.weight_reciprocal) >= 1 {
                         Ok(())
                     } else {
                         Err(ErrorCode::InsufficientWeight.into())
@@ -263,7 +263,7 @@ impl GuardV0 {
             GuardType::FirstCreatorAddress { addresses } => {
                 let token_config = addresses.iter().find(|config| config.mint == token.mint);
                 if let Some(config) = token_config {
-                    if token.amount / config.weight_reciprocal >= 1 {
+                    if (token.amount / config.weight_reciprocal) >= 1 {
                         Ok(())
                     } else {
                         Err(ErrorCode::InsufficientWeight.into())
@@ -275,7 +275,7 @@ impl GuardV0 {
             GuardType::MintList { mints } => {
                 let token_config = mints.iter().find(|config| config.mint == token.mint);
                 if let Some(config) = token_config {
-                    if token.amount / config.weight_reciprocal >= 1 {
+                    if (token.amount / config.weight_reciprocal) >= 1 {
                         Ok(())
                     } else {
                         Err(ErrorCode::InsufficientWeight.into())
