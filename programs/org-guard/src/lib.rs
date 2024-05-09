@@ -1,7 +1,7 @@
 use std::default;
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::token::{TokenAccount};
 use metaplex::MetadataAccount;
 use organization::state::OrganizationV0;
 
@@ -68,7 +68,8 @@ pub mod org_nft_guard {
             }
         }).collect();
         
-        ctx.accounts.guard.assert_is_valid_token(&metadata)?;
+        ctx.accounts.guard.assert_is_valid_token(&metadata, &ctx.accounts.mint)?;
+        ctx.accounts.guard.assert_is_valid_weight(&ctx.accounts.token_account)?;
         organization::cpi::initialize_proposal_v0(
             CpiContext::new_with_signer(
                 ctx.accounts.organization_program.to_account_info(),
@@ -143,8 +144,9 @@ pub struct InitializeProposalV0<'info> {
       has_one = guard
     )]
     pub organization: Box<Account<'info, OrganizationV0>>,
-
-    pub mint: Box<Account<'info, Mint>>,
+    /// CHECK: Checked in ATA and Metadata derivation
+    #[account(constraint = mint.key() == token_account.mint)]
+    pub mint: AccountInfo<'info>,
     #[account(
         seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
         seeds::program = MetadataAccount::owner(),
@@ -169,11 +171,17 @@ pub struct InitializeProposalV0<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+pub struct TokenConfig {
+    pub mint: Pubkey,
+    pub weight_reciprocal: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub enum GuardType {
-    CollectionMint { mints: [Pubkey; 8] },
-    FirstCreatorAddress { addresses: [Pubkey; 8] },
+    CollectionMint { mints: [TokenConfig; 6] },
+    FirstCreatorAddress { addresses: [TokenConfig; 6] },
     // This is not implemented yet
-    MintList { mints: [Pubkey; 8] },
+    MintList { mints: [TokenConfig; 6] },
 }
 
 #[account]
@@ -188,15 +196,16 @@ pub struct GuardV0 {
 }
 
 impl GuardV0 {
-    pub fn assert_is_valid_token(&self, metadata: &MetadataAccount) -> Result<()> {
-        match self.guard_type {
+    pub fn assert_is_valid_token(&self, metadata: &MetadataAccount, mint: &AccountInfo) -> Result<()> {
+        match &self.guard_type {
             GuardType::CollectionMint { mints } => {
                 match metadata.collection.as_ref() {
                     Some(col)
                         if col.verified
                             && mints
                                 .iter()
-                                .any(|collection_item| collection_item == &col.key) =>
+                                .any(|collection_config| collection_config.mint == col.key) =>
+                                
                     {
                         // If the collection is verified and the key matches one of the mints, return Ok(())
                         Ok(())
@@ -214,7 +223,7 @@ impl GuardV0 {
                     // Check if the first creator's address is in the list of addresses provided
                     if addresses
                         .iter()
-                        .any(|address| *address == first_creator.address)
+                        .any(|creator_config| creator_config.mint == first_creator.address)
                     {
                         Ok(())
                     } else {
@@ -224,7 +233,57 @@ impl GuardV0 {
                     Err(ErrorCode::MintNotValid.into())
                 }
             }
-            GuardType::MintList { mints } => todo!(),
+            GuardType::MintList { mints } => {
+                // Check if the Mint's address is in the list of mints provided
+                if mints
+                    .iter()
+                    .any(|mint_config| mint_config.mint == mint.key())
+                {
+                    Ok(())
+                } else {
+                    Err(ErrorCode::MintNotValid.into())
+                }
+            },
+        }
+    }
+    pub fn assert_is_valid_weight(&self, token: &TokenAccount) -> Result<()> {
+        match &self.guard_type {
+            GuardType::CollectionMint { mints } => {
+                let token_config = mints.iter().find(|config| config.mint == token.mint);
+                if let Some(config) = token_config {
+                    if token.amount >= config.weight_reciprocal {
+                        Ok(())
+                    } else {
+                        Err(ErrorCode::InsufficientWeight.into())
+                    }
+                } else {
+                    Err(ErrorCode::MintNotValid.into())
+                }
+            }
+            GuardType::FirstCreatorAddress { addresses } => {
+                let token_config = addresses.iter().find(|config| config.mint == token.mint);
+                if let Some(config) = token_config {
+                    if token.amount >= config.weight_reciprocal {
+                        Ok(())
+                    } else {
+                        Err(ErrorCode::InsufficientWeight.into())
+                    }
+                } else {
+                    Err(ErrorCode::MintNotValid.into())
+                }
+            }
+            GuardType::MintList { mints } => {
+                let token_config = mints.iter().find(|config| config.mint == token.mint);
+                if let Some(config) = token_config {
+                    if token.amount >= config.weight_reciprocal {
+                        Ok(())
+                    } else {
+                        Err(ErrorCode::InsufficientWeight.into())
+                    }
+                } else {
+                    Err(ErrorCode::MintNotValid.into())
+                }
+            },
         }
     }
 }

@@ -6,4 +6,6 @@ pub enum ErrorCode {
     MintNotValid,
     #[msg("The collection is either not verified or the mint does not match.")]
     CollectionVerificationFailed,
+    #[msg("The weight reciprocal does not meet the Guard requirements")]
+    InsufficientWeight,
 }
