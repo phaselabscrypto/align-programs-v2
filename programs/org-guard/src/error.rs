@@ -8,6 +8,6 @@ pub enum ErrorCode {
     CollectionVerificationFailed,
     #[msg("The weight reciprocal does not meet the Guard requirements")]
     InsufficientWeight,
-    #[msg("The collection, mint, or creator is either not verified or does not match.")]
-    TokenConfigNotFound,
+    #[msg("The first verified creator address does not match the Guard requirements.")]
+    FirstCreatorAddressVerificationFailed,
 }

@@ -68,7 +68,6 @@ pub mod org_nft_guard {
             }
         }).collect();
         
-        ctx.accounts.guard.assert_is_valid_token(&metadata, &ctx.accounts.mint)?;
         ctx.accounts.guard.assert_is_valid_weight(&metadata, &ctx.accounts.mint, &ctx.accounts.token_account)?;
         
         organization::cpi::initialize_proposal_v0(
@@ -197,45 +196,42 @@ pub struct GuardV0 {
 }
 
 impl GuardV0 {
-    pub fn find_token_config(&self, metadata: &MetadataAccount, mint: &AccountInfo) -> Option<&TokenConfig> {
+    pub fn find_token_config(&self, metadata: &MetadataAccount, mint: &AccountInfo) -> Result<&TokenConfig> {
         match &self.guard_type {
             GuardType::CollectionMint { token_configs } => {
-                metadata.collection.as_ref().and_then(|col| {
-                    if col.verified {
+                match metadata.collection.as_ref() {
+                    Some(col) if col.verified => {
                         token_configs.iter().find(|config| config.address == col.key)
-                    } else {
-                        None
-                    }
-                })
+                            .ok_or(ErrorCode::CollectionVerificationFailed.into())
+                    },
+                    _ => Err(ErrorCode::CollectionVerificationFailed.into())
+                }
             },
             GuardType::FirstCreatorAddress { token_configs } => {
-                metadata.data.creators.as_ref().and_then(|creators| {
-                    creators.iter().next().and_then(|creator| {
-                        token_configs.iter().find(|config| config.address == creator.address)
-                    })
-                })
+                if let Some(creators) = metadata.data.creators.as_ref() {
+                    if let Some(first_creator) = creators.iter().find(|creator| creator.verified) {
+                        token_configs.iter().find(|config| config.address == first_creator.address)
+                            .ok_or(ErrorCode::FirstCreatorAddressVerificationFailed.into())
+                    } else {
+                        Err(ErrorCode::FirstCreatorAddressVerificationFailed.into())
+                    }
+                } else {
+                    Err(ErrorCode::FirstCreatorAddressVerificationFailed.into())
+                }
             },
             GuardType::MintList { token_configs } => {
                 token_configs.iter().find(|config| config.address == mint.key())
+                    .ok_or(ErrorCode::MintNotValid.into())
             },
         }
     }
-    pub fn assert_is_valid_token(&self, metadata: &MetadataAccount, mint: &AccountInfo) -> Result<()> {
-        if let Some(config) = self.find_token_config(metadata, mint) {
+    pub fn assert_is_valid_weight(&self, metadata: &MetadataAccount, mint: &AccountInfo, token: &TokenAccount) -> Result<()> {
+        let config = self.find_token_config(metadata, mint)?;
+
+        if token.amount >= config.weight_reciprocal {
             Ok(())
         } else {
-            Err(ErrorCode::TokenConfigNotFound.into())
-        }
-    }
-    pub fn assert_is_valid_weight(&self, metadata: &MetadataAccount, mint: &AccountInfo, token: &TokenAccount) -> Result<()> {
-        if let Some(config) = self.find_token_config(metadata, mint) {
-            if token.amount >= config.weight_reciprocal {
-                Ok(())
-            } else {
-                Err(ErrorCode::InsufficientWeight.into())
-            }
-        } else {
-            Err(ErrorCode::TokenConfigNotFound.into())
+            Err(ErrorCode::InsufficientWeight.into())
         }
     }
 }
