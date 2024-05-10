@@ -67,9 +67,10 @@ pub mod org_nft_guard {
                 uri: choice.uri,
             }
         }).collect();
+        let token_configs = ctx.accounts.guard.get_token_configs();
         
         ctx.accounts.guard.assert_is_valid_token(&metadata, &ctx.accounts.mint)?;
-        ctx.accounts.guard.assert_is_valid_weight(&ctx.accounts.token_account)?;
+        ctx.accounts.guard.assert_is_valid_weight(&token_configs, &ctx.accounts.token_account)?;
         organization::cpi::initialize_proposal_v0(
             CpiContext::new_with_signer(
                 ctx.accounts.organization_program.to_account_info(),
@@ -172,16 +173,16 @@ pub struct InitializeProposalV0<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct TokenConfig {
-    pub mint: Pubkey,
+    pub address: Pubkey,
     pub weight_reciprocal: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub enum GuardType {
-    CollectionMint { mints: [TokenConfig; 6] },
-    FirstCreatorAddress { addresses: [TokenConfig; 6] },
+    CollectionMint { token_configs: [TokenConfig; 6] },
+    FirstCreatorAddress { token_configs: [TokenConfig; 6] },
     // This is not implemented yet
-    MintList { mints: [TokenConfig; 6] },
+    MintList { token_configs: [TokenConfig; 6] },
 }
 
 #[account]
@@ -198,16 +199,16 @@ pub struct GuardV0 {
 impl GuardV0 {
     pub fn assert_is_valid_token(&self, metadata: &MetadataAccount, mint: &AccountInfo) -> Result<()> {
         match &self.guard_type {
-            GuardType::CollectionMint { mints } => {
+            GuardType::CollectionMint { token_configs } => {
                 match metadata.collection.as_ref() {
                     Some(col)
                         if col.verified
-                            && mints
+                            && token_configs
                                 .iter()
-                                .any(|collection_config| collection_config.mint == col.key) =>
+                                .any(|collection_config| collection_config.address == col.key) =>
                                 
                     {
-                        // If the collection is verified and the key matches one of the mints, return Ok(())
+                        // If the collection is verified and the key matches one of the token_config addresses, return Ok(())
                         Ok(())
                     }
                     _ => {
@@ -216,14 +217,14 @@ impl GuardV0 {
                     }
                 }
             }
-            GuardType::FirstCreatorAddress { addresses } => {
+            GuardType::FirstCreatorAddress { token_configs } => {
                 if let Some(first_creator) =
                     metadata.data.creators.as_ref().unwrap().into_iter().next()
                 {
-                    // Check if the first creator's address is in the list of addresses provided
-                    if addresses
+                    // Check if the first creator's address is in the list of token_configs provided
+                    if token_configs
                         .iter()
-                        .any(|creator_config| creator_config.mint == first_creator.address)
+                        .any(|creator_config| creator_config.address == first_creator.address)
                     {
                         Ok(())
                     } else {
@@ -233,11 +234,11 @@ impl GuardV0 {
                     Err(ErrorCode::MintNotValid.into())
                 }
             }
-            GuardType::MintList { mints } => {
-                // Check if the Mint's address is in the list of mints provided
-                if mints
+            GuardType::MintList { token_configs } => {
+                // Check if the Mint's address is in the list of token_configs provided
+                if token_configs
                     .iter()
-                    .any(|mint_config| mint_config.mint == mint.key())
+                    .any(|mint_config| mint_config.address == mint.key())
                 {
                     Ok(())
                 } else {
@@ -246,44 +247,23 @@ impl GuardV0 {
             },
         }
     }
-    pub fn assert_is_valid_weight(&self, token: &TokenAccount) -> Result<()> {
+    pub fn assert_is_valid_weight(&self, token_configs: &[TokenConfig], token: &TokenAccount) -> Result<()> {
+        let token_config = token_configs.iter().find(|config| config.address == token.mint);
+        if let Some(config) = token_config {
+            if token.amount >= config.weight_reciprocal {
+                Ok(())
+            } else {
+                Err(ErrorCode::InsufficientWeight.into())
+            }
+        } else {
+            Err(ErrorCode::MintNotValid.into())
+        }
+    }
+    pub fn get_token_configs(&self) -> &[TokenConfig] {
         match &self.guard_type {
-            GuardType::CollectionMint { mints } => {
-                let token_config = mints.iter().find(|config| config.mint == token.mint);
-                if let Some(config) = token_config {
-                    if (token.amount / config.weight_reciprocal) >= 1 {
-                        Ok(())
-                    } else {
-                        Err(ErrorCode::InsufficientWeight.into())
-                    }
-                } else {
-                    Err(ErrorCode::MintNotValid.into())
-                }
-            }
-            GuardType::FirstCreatorAddress { addresses } => {
-                let token_config = addresses.iter().find(|config| config.mint == token.mint);
-                if let Some(config) = token_config {
-                    if (token.amount / config.weight_reciprocal) >= 1 {
-                        Ok(())
-                    } else {
-                        Err(ErrorCode::InsufficientWeight.into())
-                    }
-                } else {
-                    Err(ErrorCode::MintNotValid.into())
-                }
-            }
-            GuardType::MintList { mints } => {
-                let token_config = mints.iter().find(|config| config.mint == token.mint);
-                if let Some(config) = token_config {
-                    if (token.amount / config.weight_reciprocal) >= 1 {
-                        Ok(())
-                    } else {
-                        Err(ErrorCode::InsufficientWeight.into())
-                    }
-                } else {
-                    Err(ErrorCode::MintNotValid.into())
-                }
-            },
+            GuardType::CollectionMint { token_configs } |
+            GuardType::FirstCreatorAddress { token_configs } |
+            GuardType::MintList { token_configs } => token_configs,
         }
     }
 }
