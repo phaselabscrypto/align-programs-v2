@@ -17,8 +17,9 @@ pub struct ResolveV0<'info> {
     mut,
     owner = proposal_program.key(),
     has_one = proposal_config,
-    constraint = match proposal.state {
+    constraint = match &proposal.state {
       ProposalState::Voting { .. } => true,
+      ProposalState::Custom { name, .. } => name == "Ranking",
       _ => false
     }
   )]
@@ -38,10 +39,16 @@ pub fn handler(ctx: Context<ResolveV0>) -> Result<()> {
         .state_controller
         .settings
         .iter()
-        .find(|item| item.state == proposal.state)
+        .find(|item|  proposal.state == item.state.clone().into())
         .unwrap()
         .resolution(&proposal)
     {
+       let new_state = match resolution.next_state {
+                StratProposalState::Resolved { .. } => ProposalState::Resolved { choices: resolution.choices, end_ts: Clock::get()?.unix_timestamp },
+                StratProposalState::Voting { .. } => ProposalState::Voting { start_ts: Clock::get()?.unix_timestamp },
+                _ => panic!(),
+           };
+
         update_state_v0(
             CpiContext::new_with_signer(
                 ctx.accounts.proposal_program.to_account_info().clone(),
@@ -53,10 +60,7 @@ pub fn handler(ctx: Context<ResolveV0>) -> Result<()> {
                 &[resolution_setting_seeds!(ctx.accounts.state_controller)],
             ),
             UpdateStateArgsV0 {
-                new_state: ProposalState::Resolved {
-                    choices: resolution,
-                    end_ts: Clock::get()?.unix_timestamp,
-                },
+                new_state
             },
         )?;
     }

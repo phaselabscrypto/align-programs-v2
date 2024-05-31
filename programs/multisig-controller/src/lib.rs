@@ -206,7 +206,7 @@ pub struct VoteV0<'info> {
     pub on_vote_hook: AccountInfo<'info>,
     /// CHECK: Checked via constraint
     #[account(
-    constraint = *proposal.to_account_info().owner == proposal_program.key()
+        constraint = *proposal.to_account_info().owner == proposal_program.key()
     )]
     pub proposal_program: AccountInfo<'info>,
     pub system_program: Program<'info, System>
