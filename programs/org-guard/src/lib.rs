@@ -1,4 +1,5 @@
 use std::default;
+use std::str::FromStr;
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{TokenAccount};
@@ -182,6 +183,7 @@ pub enum GuardType {
     // This is not implemented yet
     MintList { token_configs: [TokenConfig; 6] },
     WalletList { token_configs: [TokenConfig; 6] },
+    Permissive,
 }
 
 #[account]
@@ -196,13 +198,13 @@ pub struct GuardV0 {
 }
 
 impl GuardV0 {
-    pub fn find_token_config(&self, metadata: &MetadataAccount, mint: &AccountInfo, proposer: &AccountInfo) -> Result<&TokenConfig> {
+    pub fn find_token_config(&self, metadata: &MetadataAccount, mint: &AccountInfo, proposer: &AccountInfo) -> Result<TokenConfig> {
         match &self.guard_type {
             GuardType::CollectionMint { token_configs } => {
                 match metadata.collection.as_ref() {
                     Some(col) if col.verified => {
                         token_configs.iter().find(|config| config.address == col.key)
-                            .ok_or(ErrorCode::CollectionVerificationFailed.into())
+                            .ok_or(ErrorCode::CollectionVerificationFailed.into()).cloned()
                     },
                     _ => Err(ErrorCode::CollectionVerificationFailed.into())
                 }
@@ -211,7 +213,7 @@ impl GuardV0 {
                 if let Some(creators) = metadata.data.creators.as_ref() {
                     if let Some(first_creator) = creators.iter().find(|creator| creator.verified) {
                         token_configs.iter().find(|config| config.address == first_creator.address)
-                            .ok_or(ErrorCode::FirstCreatorAddressVerificationFailed.into())
+                            .ok_or(ErrorCode::FirstCreatorAddressVerificationFailed.into()).cloned()
                     } else {
                         Err(ErrorCode::FirstCreatorAddressVerificationFailed.into())
                     }
@@ -221,11 +223,17 @@ impl GuardV0 {
             },
             GuardType::MintList { token_configs } => {
                 token_configs.iter().find(|config| config.address == mint.key())
-                    .ok_or(ErrorCode::MintNotValid.into())
+                    .ok_or(ErrorCode::MintNotValid.into()).cloned()
             },
             GuardType::WalletList { token_configs } => {
                 token_configs.iter().find(|config| config.address == proposer.key())
-                    .ok_or(ErrorCode::ProposerNotValid.into())
+                    .ok_or(ErrorCode::ProposerNotValid.into()).cloned()
+            },
+            GuardType::Permissive => {
+                Ok(TokenConfig {
+                    address: Pubkey::from_str("So11111111111111111111111111111111111111112").unwrap(),
+                    weight_reciprocal: 0,
+                })
             },
         }
     }
