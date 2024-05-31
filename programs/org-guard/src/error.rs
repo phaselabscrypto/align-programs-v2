@@ -10,4 +10,6 @@ pub enum ErrorCode {
     InsufficientWeight,
     #[msg("The first verified creator address does not match the Guard requirements.")]
     FirstCreatorAddressVerificationFailed,
+    #[msg("Proposal public key does meet guard requirements")]
+    ProposerNotValid,
 }
