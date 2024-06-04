@@ -145,8 +145,6 @@ pub struct InitializeProposalV0<'info> {
       has_one = guard
     )]
     pub organization: Box<Account<'info, OrganizationV0>>,
-    /// CHECK: Checked in ATA and Metadata derivation
-    #[account(constraint = mint.key() == token_account.mint)]
     pub mint: AccountInfo<'info>,
     #[account(
         seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
