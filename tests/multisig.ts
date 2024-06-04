@@ -145,7 +145,7 @@ describe("multisig", () => {
         expect(markerA?.proposal.toBase58()).to.eq(proposal.toBase58())
 
         const tx2 = await msProgram.methods
-          .relinguishVoteV0()
+          .relinquishVoteV0()
           .accounts({
             proposal,
             payer: me,

@@ -99,7 +99,7 @@ pub mod multisig_controller {
         Ok(())
     }
 
-    pub fn relinguish_vote_v0(ctx: Context<RelinguishVoteV0>) -> Result<()> {
+    pub fn relinquish_vote_v0(ctx: Context<RelinquishVoteV0>) -> Result<()> {
         
         require!(ctx.accounts.vote_record.choice.is_some(), error::ErrorCode::NoVoteForThisChoice);
         
@@ -214,7 +214,7 @@ pub struct VoteV0<'info> {
 }
 
 #[derive(Accounts)]
-pub struct RelinguishVoteV0<'info> {
+pub struct RelinquishVoteV0<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account()]
