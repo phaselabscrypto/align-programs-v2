@@ -145,6 +145,7 @@ pub struct InitializeProposalV0<'info> {
       has_one = guard
     )]
     pub organization: Box<Account<'info, OrganizationV0>>,
+    /// CHECK: Checked via cpi
     pub mint: AccountInfo<'info>,
     #[account(
         seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
