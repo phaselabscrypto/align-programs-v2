@@ -6,4 +6,10 @@ pub enum ErrorCode {
     MintNotValid,
     #[msg("The collection is either not verified or the mint does not match.")]
     CollectionVerificationFailed,
+    #[msg("The weight reciprocal does not meet the Guard requirements")]
+    InsufficientWeight,
+    #[msg("The first verified creator address does not match the Guard requirements.")]
+    FirstCreatorAddressVerificationFailed,
+    #[msg("Proposal public key does meet guard requirements")]
+    ProposerNotValid,
 }

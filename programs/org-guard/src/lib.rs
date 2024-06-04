@@ -1,7 +1,8 @@
 use std::default;
+use std::str::FromStr;
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::token::{TokenAccount};
 use metaplex::MetadataAccount;
 use organization::state::OrganizationV0;
 
@@ -68,7 +69,8 @@ pub mod org_nft_guard {
             }
         }).collect();
         
-        ctx.accounts.guard.assert_is_valid_token(&metadata)?;
+        ctx.accounts.guard.assert_is_valid_weight(&metadata, &ctx.accounts.mint, &ctx.accounts.token_account, &ctx.accounts.proposer)?;
+        
         organization::cpi::initialize_proposal_v0(
             CpiContext::new_with_signer(
                 ctx.accounts.organization_program.to_account_info(),
@@ -143,8 +145,7 @@ pub struct InitializeProposalV0<'info> {
       has_one = guard
     )]
     pub organization: Box<Account<'info, OrganizationV0>>,
-
-    pub mint: Box<Account<'info, Mint>>,
+    pub mint: AccountInfo<'info>,
     #[account(
         seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
         seeds::program = MetadataAccount::owner(),
@@ -154,7 +155,6 @@ pub struct InitializeProposalV0<'info> {
     #[account(
         associated_token::authority = proposer,
         associated_token::mint = mint,
-        constraint = token_account.amount == 1,
   )]
     pub token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: Checked via address constraint
@@ -169,11 +169,19 @@ pub struct InitializeProposalV0<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+pub struct TokenConfig {
+    pub address: Pubkey,
+    pub weight_reciprocal: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub enum GuardType {
-    CollectionMint { mints: [Pubkey; 8] },
-    FirstCreatorAddress { addresses: [Pubkey; 8] },
+    CollectionMint { token_configs: [TokenConfig; 6] },
+    FirstCreatorAddress { token_configs: [TokenConfig; 6] },
     // This is not implemented yet
-    MintList { mints: [Pubkey; 8] },
+    MintList { token_configs: [TokenConfig; 6] },
+    WalletList { token_configs: [TokenConfig; 6] },
+    Permissive,
 }
 
 #[account]
@@ -188,43 +196,52 @@ pub struct GuardV0 {
 }
 
 impl GuardV0 {
-    pub fn assert_is_valid_token(&self, metadata: &MetadataAccount) -> Result<()> {
-        match self.guard_type {
-            GuardType::CollectionMint { mints } => {
+    pub fn find_token_config(&self, metadata: &MetadataAccount, mint: &AccountInfo, proposer: &AccountInfo) -> Result<TokenConfig> {
+        match &self.guard_type {
+            GuardType::CollectionMint { token_configs } => {
                 match metadata.collection.as_ref() {
-                    Some(col)
-                        if col.verified
-                            && mints
-                                .iter()
-                                .any(|collection_item| collection_item == &col.key) =>
-                    {
-                        // If the collection is verified and the key matches one of the mints, return Ok(())
-                        Ok(())
-                    }
-                    _ => {
-                        // If the collection is not verified or the key doesn't match, return an error
-                        Err(ErrorCode::CollectionVerificationFailed.into())
-                    }
+                    Some(col) if col.verified => {
+                        token_configs.iter().find(|config| config.address == col.key)
+                            .ok_or(ErrorCode::CollectionVerificationFailed.into()).cloned()
+                    },
+                    _ => Err(ErrorCode::CollectionVerificationFailed.into())
                 }
-            }
-            GuardType::FirstCreatorAddress { addresses } => {
-                if let Some(first_creator) =
-                    metadata.data.creators.as_ref().unwrap().into_iter().next()
-                {
-                    // Check if the first creator's address is in the list of addresses provided
-                    if addresses
-                        .iter()
-                        .any(|address| *address == first_creator.address)
-                    {
-                        Ok(())
+            },
+            GuardType::FirstCreatorAddress { token_configs } => {
+                if let Some(creators) = metadata.data.creators.as_ref() {
+                    if let Some(first_creator) = creators.iter().find(|creator| creator.verified) {
+                        token_configs.iter().find(|config| config.address == first_creator.address)
+                            .ok_or(ErrorCode::FirstCreatorAddressVerificationFailed.into()).cloned()
                     } else {
-                        Err(ErrorCode::MintNotValid.into())
+                        Err(ErrorCode::FirstCreatorAddressVerificationFailed.into())
                     }
                 } else {
-                    Err(ErrorCode::MintNotValid.into())
+                    Err(ErrorCode::FirstCreatorAddressVerificationFailed.into())
                 }
-            }
-            GuardType::MintList { mints } => todo!(),
+            },
+            GuardType::MintList { token_configs } => {
+                token_configs.iter().find(|config| config.address == mint.key())
+                    .ok_or(ErrorCode::MintNotValid.into()).cloned()
+            },
+            GuardType::WalletList { token_configs } => {
+                token_configs.iter().find(|config| config.address == proposer.key())
+                    .ok_or(ErrorCode::ProposerNotValid.into()).cloned()
+            },
+            GuardType::Permissive => {
+                Ok(TokenConfig {
+                    address: Pubkey::from_str("So11111111111111111111111111111111111111112").unwrap(),
+                    weight_reciprocal: 0,
+                })
+            },
+        }
+    }
+    pub fn assert_is_valid_weight(&self, metadata: &MetadataAccount, mint: &AccountInfo, token: &TokenAccount, proposer: &AccountInfo) -> Result<()> {
+        let config = self.find_token_config(metadata, mint, proposer)?;
+
+        if token.amount >= config.weight_reciprocal {
+            Ok(())
+        } else {
+            Err(ErrorCode::InsufficientWeight.into())
         }
     }
 }
