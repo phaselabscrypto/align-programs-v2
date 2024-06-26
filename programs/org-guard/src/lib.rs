@@ -1,4 +1,3 @@
-use std::default;
 use std::str::FromStr;
 
 use anchor_lang::prelude::*;

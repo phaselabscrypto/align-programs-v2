@@ -4,7 +4,7 @@ skip-lint = false
 [programs.localnet]
 multisig-controller = "a2mscRXReHpSr44YPgHSedpyvgExTdiDufHqcFNmZWx"
 nft-reputation = "3mYGDQq3NM4xgJAe3khNsicsnnJwHL6kBpLTATXDiMM9"
-org-nft-guard = "a2grdoc6VNAxZ5TrbGUR1bvH6Z1AewtuwmbM8573Wis"
+org_nft_guard = "a2grdoc6VNAxZ5TrbGUR1bvH6Z1AewtuwmbM8573Wis"
 organization = "a2orghRV2Bj2fyqFQtYeBZ9972raZyrvXVf5tQ9jYMK"
 organization_wallet = "a2orwPjEDJyDWSx3saqsHu6JDNdLn4q9Er633syP2xh"
 reputation = "E6qW37nUQgCcqWxwjSkpeAfJeW17YzFbdrEtVrGPMExM"
