@@ -6,6 +6,7 @@
     "dependencies": {
         "@cardinal/common": "^8.0.0",
         "@coral-xyz/anchor": "^0.28.0",
+        "@helium/spl-utils": "^0.8.6",
         "@metaplex-foundation/mpl-token-auth-rules": "^3.0.3",
         "@msgpack/msgpack": "^3.0.0-beta2",
         "@types/chai-as-promised": "^7.1.8",
