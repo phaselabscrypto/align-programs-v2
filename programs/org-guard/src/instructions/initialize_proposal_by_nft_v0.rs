@@ -6,8 +6,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
 #[derive(Accounts)]
-#[instruction(args: InitializeProposalArgsV0)]
-pub struct InitializeProposalV0<'info> {
+pub struct InitializeProposalByNftV0<'info> {
     pub initialize_proposal_base: InitializeProposalBaseV0<'info>,
 
     pub proposer: Signer<'info>,
@@ -27,7 +26,7 @@ pub struct InitializeProposalV0<'info> {
 }
 
 pub fn handler<'info>(
-    ctx: Context<'_, '_, '_, 'info, InitializeProposalV0<'info>>,
+    ctx: Context<'_, '_, '_, 'info, InitializeProposalByNftV0<'info>>,
     args: InitializeProposalArgsV0,
 ) -> Result<()> {
     let base = &ctx.accounts.initialize_proposal_base;

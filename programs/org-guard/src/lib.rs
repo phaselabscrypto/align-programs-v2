@@ -20,10 +20,17 @@ pub mod org_nft_guard {
         initialize_guard_v0::handler(ctx, args)
     }
 
-    pub fn initialize_proposal_v0<'info>(
-        ctx: Context<'_, '_, '_, 'info, InitializeProposalV0<'info>>,
+    pub fn initialize_proposal_by_nft_v0<'info>(
+        ctx: Context<'_, '_, '_, 'info, InitializeProposalByNftV0<'info>>,
         args: InitializeProposalArgsV0,
     ) -> Result<()> {
-        initialize_proposal_v0::handler(ctx, args)
+        initialize_proposal_by_nft_v0::handler(ctx, args)
+    }
+
+    pub fn initialize_proposal_permissively_v0<'info>(
+        ctx: Context<'_, '_, '_, 'info, InitializeProposalPermissivelyV0<'info>>,
+        args: InitializeProposalArgsV0,
+    ) -> Result<()> {
+        initialize_proposal_permissively_v0::handler(ctx, args)
     }
 }

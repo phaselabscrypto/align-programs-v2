@@ -184,7 +184,7 @@ describe("org nft guard", () => {
       const [proposal] = proposalKey(organization, buffer);
 
       await program.methods
-        .initializeProposalV0({
+        .initializeProposalPermissivelyV0({
           name,
           uri: "https://example.com",
           maxChoicesPerVoter: 1,
@@ -206,10 +206,6 @@ describe("org nft guard", () => {
             proposalProgram: PROPOSAL_PROGRAM_ID,
             organizationProgram: anchor.workspace.Organization.programId,
           },
-          proposer: me,
-          mint: PublicKey.default,
-          metadata: PublicKey.default,
-          tokenAccount: PublicKey.default,
         })
         .rpc();
 
@@ -282,7 +278,7 @@ describe("org nft guard", () => {
       const tokenAccount = getAssociatedTokenAddressSync(mint, me);
 
       await program.methods
-        .initializeProposalV0({
+        .initializeProposalByNftV0({
           name,
           uri: "https://example.com",
           maxChoicesPerVoter: 1,
@@ -339,7 +335,7 @@ describe("org nft guard", () => {
 
       try {
         await program.methods
-          .initializeProposalV0({
+          .initializeProposalByNftV0({
             name,
             uri: "https://example.com",
             maxChoicesPerVoter: 1,
@@ -401,7 +397,7 @@ describe("org nft guard", () => {
 
       try {
         await program.methods
-          .initializeProposalV0({
+          .initializeProposalByNftV0({
             name,
             uri: "https://example.com",
             maxChoicesPerVoter: 1,
