@@ -20,8 +20,8 @@ pub mod org_nft_guard {
         initialize_guard_v0::handler(ctx, args)
     }
 
-    pub fn initialize_proposal_v0(
-        ctx: Context<InitializeProposalV0>,
+    pub fn initialize_proposal_v0<'info>(
+        ctx: Context<'_, '_, '_, 'info, InitializeProposalV0<'info>>,
         args: InitializeProposalArgsV0,
     ) -> Result<()> {
         initialize_proposal_v0::handler(ctx, args)

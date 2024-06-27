@@ -3,7 +3,7 @@ import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { OrgNftGuard } from "../target/types/org_nft_guard";
 import { Organization } from "../target/types/organization";
 import { expect } from "chai";
-import { random } from "lodash";
+import { sample } from "lodash";
 import {
   PROGRAM_ID as PROPOSAL_PROGRAM_ID,
   proposalKey,
@@ -122,17 +122,17 @@ describe("org nft guard", () => {
   it("initializes org nft guard with collection mint", async () => {
     let name = "test" + Math.random();
     const address = Keypair.generate().publicKey;
-    const weightReciprocal = new anchor.BN(10 ** random(1, 9));
+    const weight = sample([1, 2, 5, 10, 20, 50, 100]);
 
     const { nftGuard, bump } = await initializeGuardV0({
       provider,
       name,
       guardType: {
         collectionMint: {
-          tokenConfigs: [
+          nftConfigs: [
             {
               address,
-              weightReciprocal,
+              weight,
             },
           ],
         },
@@ -140,12 +140,12 @@ describe("org nft guard", () => {
     });
 
     const account = await program.account.guardV0.fetch(nftGuard as any);
-    const tokenConfigs = account.guardType.collectionMint.tokenConfigs;
+    const nftConfigs = account.guardType.collectionMint.nftConfigs;
 
     expect(account.name).to.eq(name);
     expect(account.bump).to.eq(bump);
-    expect(tokenConfigs[0].address.equals(address)).to.be.true;
-    expect(tokenConfigs[0].weightReciprocal.eq(weightReciprocal)).to.be.true;
+    expect(nftConfigs[0].address.equals(address)).to.be.true;
+    expect(nftConfigs[0].weight).to.eq(weight);
   });
 
   describe("with permissive guard", () => {
@@ -178,7 +178,7 @@ describe("org nft guard", () => {
       }));
     });
 
-    it("initializes proposal ", async () => {
+    it("initializes proposal", async () => {
       const buffer = Buffer.allocUnsafe(4);
       buffer.writeUInt32LE(0); // num proposals
       const [proposal] = proposalKey(organization, buffer);
@@ -195,19 +195,21 @@ describe("org nft guard", () => {
           tags: [],
         })
         .accountsStrict({
-          payer: me,
-          guard: nftGuard,
-          proposal,
+          initializeProposalBase: {
+            payer: me,
+            guard: nftGuard,
+            proposal,
+            owner: me,
+            proposalConfig,
+            organization,
+            systemProgram: SystemProgram.programId,
+            proposalProgram: PROPOSAL_PROGRAM_ID,
+            organizationProgram: anchor.workspace.Organization.programId,
+          },
           proposer: me,
-          owner: me,
-          proposalConfig,
-          organization,
-          systemProgram: SystemProgram.programId,
           mint: PublicKey.default,
           metadata: PublicKey.default,
           tokenAccount: PublicKey.default,
-          proposalProgram: PROPOSAL_PROGRAM_ID,
-          organizationProgram: anchor.workspace.Organization.programId,
         })
         .rpc();
 
@@ -243,10 +245,10 @@ describe("org nft guard", () => {
         name,
         guardType: {
           collectionMint: {
-            tokenConfigs: [
+            nftConfigs: [
               {
                 address: collectionMint,
-                weightReciprocal: new anchor.BN(1),
+                weight: 1,
               },
             ],
           },
@@ -268,7 +270,7 @@ describe("org nft guard", () => {
       return { name, mint, nftGuard, proposalConfig, organization };
     };
 
-    it("initializes proposal ", async () => {
+    it("initializes proposal", async () => {
       const { name, mint, nftGuard, proposalConfig, organization } =
         await context({});
 
@@ -291,19 +293,21 @@ describe("org nft guard", () => {
           tags: [],
         })
         .accountsStrict({
-          payer: me,
-          guard: nftGuard,
-          proposal,
+          initializeProposalBase: {
+            payer: me,
+            guard: nftGuard,
+            proposal,
+            owner: me,
+            proposalConfig,
+            organization,
+            systemProgram: SystemProgram.programId,
+            proposalProgram: PROPOSAL_PROGRAM_ID,
+            organizationProgram: anchor.workspace.Organization.programId,
+          },
           proposer: me,
-          owner: me,
-          proposalConfig,
-          organization,
-          systemProgram: SystemProgram.programId,
           mint,
           metadata,
           tokenAccount,
-          proposalProgram: PROPOSAL_PROGRAM_ID,
-          organizationProgram: anchor.workspace.Organization.programId,
         })
         .rpc();
 
@@ -346,19 +350,21 @@ describe("org nft guard", () => {
             tags: [],
           })
           .accountsStrict({
-            payer: me,
-            guard: nftGuard,
-            proposal,
+            initializeProposalBase: {
+              payer: me,
+              guard: nftGuard,
+              proposal,
+              owner: me,
+              proposalConfig,
+              organization,
+              systemProgram: SystemProgram.programId,
+              proposalProgram: PROPOSAL_PROGRAM_ID,
+              organizationProgram: anchor.workspace.Organization.programId,
+            },
             proposer: me,
-            owner: me,
-            proposalConfig,
-            organization,
-            systemProgram: SystemProgram.programId,
             mint,
             metadata,
             tokenAccount,
-            proposalProgram: PROPOSAL_PROGRAM_ID,
-            organizationProgram: anchor.workspace.Organization.programId,
           })
           .simulate();
       } catch (err) {
@@ -406,19 +412,21 @@ describe("org nft guard", () => {
             tags: [],
           })
           .accountsStrict({
-            payer: me,
-            guard: nftGuard,
-            proposal,
+            initializeProposalBase: {
+              payer: me,
+              guard: nftGuard,
+              proposal,
+              owner: me,
+              proposalConfig,
+              organization,
+              systemProgram: SystemProgram.programId,
+              proposalProgram: PROPOSAL_PROGRAM_ID,
+              organizationProgram: anchor.workspace.Organization.programId,
+            },
             proposer: me,
-            owner: me,
-            proposalConfig,
-            organization,
-            systemProgram: SystemProgram.programId,
             mint,
             metadata,
             tokenAccount,
-            proposalProgram: PROPOSAL_PROGRAM_ID,
-            organizationProgram: anchor.workspace.Organization.programId,
           })
           .simulate();
       } catch (err) {

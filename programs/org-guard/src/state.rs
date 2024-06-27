@@ -1,8 +1,4 @@
-use crate::error::ErrorCode;
-use crate::metaplex::MetadataAccount;
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
-use std::str::FromStr;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct TokenConfig {
@@ -11,9 +7,15 @@ pub struct TokenConfig {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+pub struct NftConfig {
+    pub address: Pubkey,
+    pub weight: u16,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub enum GuardType {
-    CollectionMint { token_configs: [TokenConfig; 6] },
-    FirstCreatorAddress { token_configs: [TokenConfig; 6] },
+    CollectionMint { nft_configs: [NftConfig; 6] },
+    FirstCreatorAddress { nft_configs: [NftConfig; 6] },
     // This is not implemented yet
     MintList { token_configs: [TokenConfig; 6] },
     WalletList { token_configs: [TokenConfig; 6] },
@@ -31,6 +33,7 @@ pub struct GuardV0 {
     pub bump: u8,
 }
 
+/*
 impl GuardV0 {
     pub fn find_token_config(
         &self,
@@ -94,3 +97,4 @@ impl GuardV0 {
         }
     }
 }
+*/
