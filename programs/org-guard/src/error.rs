@@ -10,7 +10,7 @@ pub enum ErrorCode {
     InsufficientWeight,
     #[msg("The first verified creator address does not meet guard requirements")]
     FirstCreatorAddressVerificationFailed,
-    #[msg("The proposer does meet guard requirements")]
+    #[msg("The proposer does not meet guard requirements")]
     ProposerNotValid,
     #[msg("The instruction is not allowed for this guard")]
     InstructionNotAllowed,
