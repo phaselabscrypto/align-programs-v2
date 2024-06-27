@@ -1,24 +1,23 @@
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
-pub struct TokenConfig {
+pub struct DivisorConfig {
     pub address: Pubkey,
-    pub weight_reciprocal: u64,
+    pub divisor: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
-pub struct NftConfig {
+pub struct MultiplierConfig {
     pub address: Pubkey,
-    pub weight: u16,
+    pub multiplier: u16,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub enum GuardType {
-    CollectionMint { nft_configs: [NftConfig; 6] },
-    FirstCreatorAddress { nft_configs: [NftConfig; 6] },
-    // This is not implemented yet
-    MintList { token_configs: [TokenConfig; 6] },
-    WalletList { token_configs: [TokenConfig; 6] },
+    CollectionMint { guard_data: [MultiplierConfig; 6] },
+    FirstCreatorAddress { guard_data: [MultiplierConfig; 6] },
+    MintList { guard_data: [DivisorConfig; 6] },
+    WalletList { guard_data: [MultiplierConfig; 6] },
     Permissive,
 }
 
@@ -27,8 +26,6 @@ pub enum GuardType {
 pub struct GuardV0 {
     #[max_len(32)]
     pub name: String,
-    // We are removing this and making it immutable to stop any chance of exploit
-    // pub authority: Pubkey,
     pub guard_type: GuardType,
     pub bump: u8,
 }

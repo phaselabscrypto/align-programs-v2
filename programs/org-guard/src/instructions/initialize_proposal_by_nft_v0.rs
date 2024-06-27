@@ -45,19 +45,19 @@ fn assert_sufficient_weight(
     metadata: &MetadataAccount,
     token: &TokenAccount,
 ) -> Result<()> {
-    let nft_config = match guard_type {
-        GuardType::CollectionMint { nft_configs } => match metadata.collection.as_ref() {
-            Some(col) if col.verified => nft_configs
+    let config = match guard_type {
+        GuardType::CollectionMint { guard_data } => match metadata.collection.as_ref() {
+            Some(col) if col.verified => guard_data
                 .iter()
                 .find(|config| config.address == col.key)
                 .ok_or(ErrorCode::CollectionVerificationFailed)
                 .cloned(),
             _ => Err(ErrorCode::CollectionVerificationFailed.into()),
         },
-        GuardType::FirstCreatorAddress { nft_configs } => {
+        GuardType::FirstCreatorAddress { guard_data } => {
             if let Some(creators) = metadata.data.creators.as_ref() {
                 if let Some(first_creator) = creators.iter().find(|creator| creator.verified) {
-                    nft_configs
+                    guard_data
                         .iter()
                         .find(|config| config.address == first_creator.address)
                         .ok_or(ErrorCode::FirstCreatorAddressVerificationFailed)
@@ -72,7 +72,7 @@ fn assert_sufficient_weight(
         _ => Err(ErrorCode::InstructionNotAllowed.into()),
     }?;
 
-    if token.amount >= nft_config.weight as u64 {
+    if config.multiplier as u64 >= token.amount {
         Ok(())
     } else {
         Err(ErrorCode::InsufficientWeight.into())

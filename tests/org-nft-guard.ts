@@ -3,7 +3,7 @@ import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { OrgNftGuard } from "../target/types/org_nft_guard";
 import { Organization } from "../target/types/organization";
 import { expect } from "chai";
-import { sample } from "lodash";
+import { random, sample } from "lodash";
 import {
   PROGRAM_ID as PROPOSAL_PROGRAM_ID,
   proposalKey,
@@ -12,6 +12,7 @@ import { organizationKey } from "@helium/organization-sdk";
 import { IDL as PROPOSAL_IDL, Proposal as ProposalIdl } from "./idls/proposal";
 import { getMetadataAddress, mintCollectionNft, mintNft } from "./helpers";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { createMint } from "./utils";
 
 const orgNftGuardKey = (name: string) => {
   return PublicKey.findProgramAddressSync(
@@ -27,7 +28,7 @@ const proposalConfigKey = (name: string) => {
   );
 };
 
-const initializeGuardV0 = async ({ provider, name, guardType }) => {
+const initializeGuard = async ({ provider, name, guardType }) => {
   const [nftGuard, bump] = orgNftGuardKey(name);
 
   const program = anchor.workspace.OrgNftGuard as anchor.Program<OrgNftGuard>;
@@ -44,10 +45,10 @@ const initializeGuardV0 = async ({ provider, name, guardType }) => {
     })
     .rpc();
 
-  return { nftGuard, bump };
+  return { guard: nftGuard, bump };
 };
 
-const initalizeProposalConfigV0 = async ({
+const initalizeProposalConfig = async ({
   provider,
   owner = provider.wallet.publicKey,
   name,
@@ -77,12 +78,12 @@ const initalizeProposalConfigV0 = async ({
   return { proposalConfig };
 };
 
-const initializeOrganizationV0 = async ({
+const initializeOrganization = async ({
   provider,
   name,
   authority = provider.wallet.publicKey,
   defaultProposalConfig,
-  nftGuard,
+  guard,
 }) => {
   const organizationProgram = anchor.workspace
     .Organization as anchor.Program<Organization>;
@@ -96,7 +97,7 @@ const initializeOrganizationV0 = async ({
     .initializeOrganizationV0({
       name,
       authority,
-      guard: nftGuard,
+      guard,
       defaultProposalConfig,
       proposalProgram: PROPOSAL_PROGRAM_ID,
       uri: "https://example.com",
@@ -122,42 +123,42 @@ describe("org nft guard", () => {
   it("initializes org nft guard with collection mint", async () => {
     let name = "test" + Math.random();
     const address = Keypair.generate().publicKey;
-    const weight = sample([1, 2, 5, 10, 20, 50, 100]);
+    const multiplier = sample([1, 2, 5, 10, 20, 50, 100]);
 
-    const { nftGuard, bump } = await initializeGuardV0({
+    const { guard, bump } = await initializeGuard({
       provider,
       name,
       guardType: {
         collectionMint: {
-          nftConfigs: [
+          guardData: [
             {
               address,
-              weight,
+              multiplier,
             },
           ],
         },
       },
     });
 
-    const account = await program.account.guardV0.fetch(nftGuard as any);
-    const nftConfigs = account.guardType.collectionMint.nftConfigs;
+    const account = await program.account.guardV0.fetch(guard as any);
+    const guardData = account.guardType.collectionMint.guardData;
 
     expect(account.name).to.eq(name);
     expect(account.bump).to.eq(bump);
-    expect(nftConfigs[0].address.equals(address)).to.be.true;
-    expect(nftConfigs[0].weight).to.eq(weight);
+    expect(guardData[0].address.equals(address)).to.be.true;
+    expect(guardData[0].multiplier).to.eq(multiplier);
   });
 
   describe("with permissive guard", () => {
     let name: string;
-    let nftGuard: PublicKey;
+    let guard: PublicKey;
     let proposalConfig: PublicKey;
     let organization: PublicKey;
 
     beforeEach(async () => {
       name = "test" + Math.random();
 
-      ({ nftGuard } = await initializeGuardV0({
+      ({ guard } = await initializeGuard({
         provider,
         name,
         guardType: {
@@ -165,15 +166,15 @@ describe("org nft guard", () => {
         },
       }));
 
-      ({ proposalConfig } = await initalizeProposalConfigV0({
+      ({ proposalConfig } = await initalizeProposalConfig({
         provider,
         name,
       }));
 
-      ({ organization } = await initializeOrganizationV0({
+      ({ organization } = await initializeOrganization({
         provider,
         name,
-        nftGuard,
+        guard,
         defaultProposalConfig: proposalConfig,
       }));
     });
@@ -197,7 +198,7 @@ describe("org nft guard", () => {
         .accountsStrict({
           initializeProposalBase: {
             payer: me,
-            guard: nftGuard,
+            guard,
             proposal,
             owner: me,
             proposalConfig,
@@ -236,39 +237,40 @@ describe("org nft guard", () => {
 
       await mintNft(collectionMintKeypair, mintKeypair, provider, receiver);
 
-      const { nftGuard } = await initializeGuardV0({
+      const { guard } = await initializeGuard({
         provider,
         name,
         guardType: {
           collectionMint: {
-            nftConfigs: [
+            guardData: [
               {
                 address: collectionMint,
-                weight: 1,
+                multiplier: 1,
               },
             ],
           },
         },
       });
 
-      const { proposalConfig } = await initalizeProposalConfigV0({
+      const { proposalConfig } = await initalizeProposalConfig({
         provider,
         name,
       });
 
-      const { organization } = await initializeOrganizationV0({
+      const { organization } = await initializeOrganization({
         provider,
         name,
-        nftGuard,
+        guard,
         defaultProposalConfig: proposalConfig,
       });
 
-      return { name, mint, nftGuard, proposalConfig, organization };
+      return { name, mint, guard, proposalConfig, organization };
     };
 
     it("initializes proposal", async () => {
-      const { name, mint, nftGuard, proposalConfig, organization } =
-        await context({});
+      const { name, mint, guard, proposalConfig, organization } = await context(
+        {}
+      );
 
       const buffer = Buffer.allocUnsafe(4);
       buffer.writeUInt32LE(0); // num proposals
@@ -291,7 +293,7 @@ describe("org nft guard", () => {
         .accountsStrict({
           initializeProposalBase: {
             payer: me,
-            guard: nftGuard,
+            guard,
             proposal,
             owner: me,
             proposalConfig,
@@ -321,8 +323,9 @@ describe("org nft guard", () => {
 
     it("fails to initialize proposal with wrong owner", async () => {
       const receiver = Keypair.generate().publicKey;
-      const { name, mint, nftGuard, proposalConfig, organization } =
-        await context({ receiver });
+      const { name, mint, guard, proposalConfig, organization } = await context(
+        { receiver }
+      );
 
       const buffer = Buffer.allocUnsafe(4);
       buffer.writeUInt32LE(0); // num proposals
@@ -348,7 +351,7 @@ describe("org nft guard", () => {
           .accountsStrict({
             initializeProposalBase: {
               payer: me,
-              guard: nftGuard,
+              guard,
               proposal,
               owner: me,
               proposalConfig,
@@ -373,9 +376,7 @@ describe("org nft guard", () => {
     });
 
     it("fails to initialize proposal with token from wrong collection", async () => {
-      const { name, nftGuard, proposalConfig, organization } = await context(
-        {}
-      );
+      const { name, guard, proposalConfig, organization } = await context({});
 
       const buffer = Buffer.allocUnsafe(4);
       buffer.writeUInt32LE(0); // num proposals
@@ -410,7 +411,7 @@ describe("org nft guard", () => {
           .accountsStrict({
             initializeProposalBase: {
               payer: me,
-              guard: nftGuard,
+              guard,
               proposal,
               owner: me,
               proposalConfig,
@@ -430,6 +431,110 @@ describe("org nft guard", () => {
       }
 
       expect(logs).to.match(/CollectionVerificationFailed/);
+    });
+  });
+
+  describe("with mint list guard", () => {
+    const context = async (
+      { target = me, amount = 10 ** random(0, 9), decimals = random(0, 6) },
+      divisor = new anchor.BN(1)
+    ) => {
+      const name = "test" + Math.random();
+
+      const [tokenAccount, mint] = await createMint(
+        provider.connection,
+        provider.wallet,
+        {
+          amount,
+          decimals,
+          target,
+        }
+      );
+
+      const { guard } = await initializeGuard({
+        provider,
+        name,
+        guardType: {
+          mintList: {
+            guardData: [
+              {
+                address: mint,
+                divisor,
+              },
+            ],
+          },
+        },
+      });
+
+      const { proposalConfig } = await initalizeProposalConfig({
+        provider,
+        name,
+      });
+
+      const { organization } = await initializeOrganization({
+        provider,
+        name,
+        guard,
+        defaultProposalConfig: proposalConfig,
+      });
+
+      return {
+        name,
+        mint,
+        guard,
+        proposalConfig,
+        organization,
+        tokenAccount,
+      };
+    };
+
+    it("initializes proposal", async () => {
+      const { name, mint, guard, proposalConfig, organization, tokenAccount } =
+        await context({});
+
+      const buffer = Buffer.allocUnsafe(4);
+      buffer.writeUInt32LE(0); // num proposals
+      const [proposal] = proposalKey(organization, buffer);
+
+      await program.methods
+        .initializeProposalByTokenV0({
+          name,
+          uri: "https://example.com",
+          maxChoicesPerVoter: 1,
+          choices: [
+            { name: "Aye", uri: null },
+            { name: "Nay", uri: null },
+          ],
+          tags: [],
+        })
+        .accountsStrict({
+          initializeProposalBase: {
+            payer: me,
+            guard,
+            proposal,
+            owner: me,
+            proposalConfig,
+            organization,
+            systemProgram: SystemProgram.programId,
+            proposalProgram: PROPOSAL_PROGRAM_ID,
+            organizationProgram: anchor.workspace.Organization.programId,
+          },
+          proposer: me,
+          mint,
+          tokenAccount,
+        })
+        .rpc();
+
+      const proposalProgram = new anchor.Program(
+        PROPOSAL_IDL,
+        PROPOSAL_PROGRAM_ID
+      );
+
+      const account = await proposalProgram.account.proposalV0.fetch(proposal);
+
+      expect(account.name).to.eq(name);
+      expect(account.maxChoicesPerVoter).to.eq(1);
+      expect(account.choices.length).to.eq(2);
     });
   });
 });

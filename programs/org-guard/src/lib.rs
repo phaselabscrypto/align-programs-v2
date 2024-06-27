@@ -33,4 +33,11 @@ pub mod org_nft_guard {
     ) -> Result<()> {
         initialize_proposal_permissively_v0::handler(ctx, args)
     }
+
+    pub fn initialize_proposal_by_token_v0<'info>(
+        ctx: Context<'_, '_, '_, 'info, InitializeProposalByTokenV0<'info>>,
+        args: InitializeProposalArgsV0,
+    ) -> Result<()> {
+        initialize_proposal_by_token_v0::handler(ctx, args)
+    }
 }
