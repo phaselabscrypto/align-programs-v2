@@ -10,6 +10,8 @@ import {
 } from "@helium/proposal-sdk";
 import { organizationKey } from "@helium/organization-sdk";
 import { IDL as PROPOSAL_IDL, Proposal as ProposalIdl } from "./idls/proposal";
+import { getMetadataAddress, mintCollectionNft, mintNft } from "./helpers";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 const orgNftGuardKey = (name: string) => {
   return PublicKey.findProgramAddressSync(
@@ -146,7 +148,7 @@ describe("org nft guard", () => {
     expect(tokenConfigs[0].weightReciprocal.eq(weightReciprocal)).to.be.true;
   });
 
-  describe("with permissive guard and organization", () => {
+  describe("with permissive guard", () => {
     let name: string;
     let nftGuard: PublicKey;
     let proposalConfig: PublicKey;
@@ -219,6 +221,211 @@ describe("org nft guard", () => {
       expect(account.name).to.eq(name);
       expect(account.maxChoicesPerVoter).to.eq(1);
       expect(account.choices.length).to.eq(2);
+    });
+  });
+
+  describe("with collection mint guard", () => {
+    const context = async ({ receiver = me }) => {
+      const name = "test" + Math.random();
+
+      const collectionMintKeypair = Keypair.generate();
+      const collectionMint = collectionMintKeypair.publicKey;
+
+      await mintCollectionNft(collectionMintKeypair, provider);
+
+      const mintKeypair = Keypair.generate();
+      const mint = mintKeypair.publicKey;
+
+      await mintNft(collectionMintKeypair, mintKeypair, provider, receiver);
+
+      const { nftGuard } = await initializeGuardV0({
+        provider,
+        name,
+        guardType: {
+          collectionMint: {
+            tokenConfigs: [
+              {
+                address: collectionMint,
+                weightReciprocal: new anchor.BN(1),
+              },
+            ],
+          },
+        },
+      });
+
+      const { proposalConfig } = await initalizeProposalConfigV0({
+        provider,
+        name,
+      });
+
+      const { organization } = await initializeOrganizationV0({
+        provider,
+        name,
+        nftGuard,
+        defaultProposalConfig: proposalConfig,
+      });
+
+      return { name, mint, nftGuard, proposalConfig, organization };
+    };
+
+    it("initializes proposal ", async () => {
+      const { name, mint, nftGuard, proposalConfig, organization } =
+        await context({});
+
+      const buffer = Buffer.allocUnsafe(4);
+      buffer.writeUInt32LE(0); // num proposals
+      const [proposal] = proposalKey(organization, buffer);
+
+      const metadata = await getMetadataAddress(mint);
+      const tokenAccount = getAssociatedTokenAddressSync(mint, me);
+
+      await program.methods
+        .initializeProposalV0({
+          name,
+          uri: "https://example.com",
+          maxChoicesPerVoter: 1,
+          choices: [
+            { name: "Aye", uri: null },
+            { name: "Nay", uri: null },
+          ],
+          tags: [],
+        })
+        .accountsStrict({
+          payer: me,
+          guard: nftGuard,
+          proposal,
+          proposer: me,
+          owner: me,
+          proposalConfig,
+          organization,
+          systemProgram: SystemProgram.programId,
+          mint,
+          metadata,
+          tokenAccount,
+          proposalProgram: PROPOSAL_PROGRAM_ID,
+          organizationProgram: anchor.workspace.Organization.programId,
+        })
+        .rpc();
+
+      const proposalProgram = new anchor.Program(
+        PROPOSAL_IDL,
+        PROPOSAL_PROGRAM_ID
+      );
+
+      const account = await proposalProgram.account.proposalV0.fetch(proposal);
+
+      expect(account.name).to.eq(name);
+      expect(account.maxChoicesPerVoter).to.eq(1);
+      expect(account.choices.length).to.eq(2);
+    });
+
+    it("fails to initialize proposal with wrong owner", async () => {
+      const receiver = Keypair.generate().publicKey;
+      const { name, mint, nftGuard, proposalConfig, organization } =
+        await context({ receiver });
+
+      const buffer = Buffer.allocUnsafe(4);
+      buffer.writeUInt32LE(0); // num proposals
+      const [proposal] = proposalKey(organization, buffer);
+
+      const metadata = await getMetadataAddress(mint);
+      const tokenAccount = getAssociatedTokenAddressSync(mint, receiver);
+
+      let logs: string;
+
+      try {
+        await program.methods
+          .initializeProposalV0({
+            name,
+            uri: "https://example.com",
+            maxChoicesPerVoter: 1,
+            choices: [
+              { name: "Aye", uri: null },
+              { name: "Nay", uri: null },
+            ],
+            tags: [],
+          })
+          .accountsStrict({
+            payer: me,
+            guard: nftGuard,
+            proposal,
+            proposer: me,
+            owner: me,
+            proposalConfig,
+            organization,
+            systemProgram: SystemProgram.programId,
+            mint,
+            metadata,
+            tokenAccount,
+            proposalProgram: PROPOSAL_PROGRAM_ID,
+            organizationProgram: anchor.workspace.Organization.programId,
+          })
+          .simulate();
+      } catch (err) {
+        ({ logs } = err.simulationResponse || {});
+      }
+
+      expect(logs).to.match(
+        /caused by account: token_account\..*ConstraintTokenOwner/
+      );
+    });
+
+    it("fails to initialize proposal with token from wrong collection", async () => {
+      const { name, nftGuard, proposalConfig, organization } = await context(
+        {}
+      );
+
+      const buffer = Buffer.allocUnsafe(4);
+      buffer.writeUInt32LE(0); // num proposals
+      const [proposal] = proposalKey(organization, buffer);
+
+      const collectionMintKeypair = Keypair.generate();
+
+      await mintCollectionNft(collectionMintKeypair, provider);
+
+      const mintKeypair = Keypair.generate();
+      const mint = mintKeypair.publicKey;
+
+      await mintNft(collectionMintKeypair, mintKeypair, provider, me);
+
+      const metadata = await getMetadataAddress(mint);
+      const tokenAccount = getAssociatedTokenAddressSync(mint, me);
+
+      let logs: string;
+
+      try {
+        await program.methods
+          .initializeProposalV0({
+            name,
+            uri: "https://example.com",
+            maxChoicesPerVoter: 1,
+            choices: [
+              { name: "Aye", uri: null },
+              { name: "Nay", uri: null },
+            ],
+            tags: [],
+          })
+          .accountsStrict({
+            payer: me,
+            guard: nftGuard,
+            proposal,
+            proposer: me,
+            owner: me,
+            proposalConfig,
+            organization,
+            systemProgram: SystemProgram.programId,
+            mint,
+            metadata,
+            tokenAccount,
+            proposalProgram: PROPOSAL_PROGRAM_ID,
+            organizationProgram: anchor.workspace.Organization.programId,
+          })
+          .simulate();
+      } catch (err) {
+        ({ logs } = err.simulationResponse || {});
+      }
+
+      expect(logs).to.match(/CollectionVerificationFailed/);
     });
   });
 });
