@@ -537,4 +537,90 @@ describe("org nft guard", () => {
       expect(account.choices.length).to.eq(2);
     });
   });
+
+  describe("with wallet list guard", () => {
+    const context = async ({ address = me, multiplier = new anchor.BN(1) }) => {
+      const name = "test" + Math.random();
+
+      const { guard } = await initializeGuard({
+        provider,
+        name,
+        guardType: {
+          walletList: {
+            guardData: [
+              {
+                address,
+                multiplier,
+              },
+            ],
+          },
+        },
+      });
+
+      const { proposalConfig } = await initalizeProposalConfig({
+        provider,
+        name,
+      });
+
+      const { organization } = await initializeOrganization({
+        provider,
+        name,
+        guard,
+        defaultProposalConfig: proposalConfig,
+      });
+
+      return {
+        name,
+        guard,
+        proposalConfig,
+        organization,
+      };
+    };
+
+    it("initializes proposal", async () => {
+      const { name, guard, proposalConfig, organization } = await context({});
+
+      const buffer = Buffer.allocUnsafe(4);
+      buffer.writeUInt32LE(0); // num proposals
+      const [proposal] = proposalKey(organization, buffer);
+
+      await program.methods
+        .initializeProposalByWalletV0({
+          name,
+          uri: "https://example.com",
+          maxChoicesPerVoter: 1,
+          choices: [
+            { name: "Aye", uri: null },
+            { name: "Nay", uri: null },
+          ],
+          tags: [],
+        })
+        .accountsStrict({
+          initializeProposalBase: {
+            payer: me,
+            guard,
+            proposal,
+            owner: me,
+            proposalConfig,
+            organization,
+            systemProgram: SystemProgram.programId,
+            proposalProgram: PROPOSAL_PROGRAM_ID,
+            organizationProgram: anchor.workspace.Organization.programId,
+          },
+          proposer: me,
+        })
+        .rpc();
+
+      const proposalProgram = new anchor.Program(
+        PROPOSAL_IDL,
+        PROPOSAL_PROGRAM_ID
+      );
+
+      const account = await proposalProgram.account.proposalV0.fetch(proposal);
+
+      expect(account.name).to.eq(name);
+      expect(account.maxChoicesPerVoter).to.eq(1);
+      expect(account.choices.length).to.eq(2);
+    });
+  });
 });
