@@ -46,29 +46,29 @@ fn assert_sufficient_weight(
     token: &TokenAccount,
 ) -> Result<()> {
     let config = match guard_type {
-        GuardType::CollectionMint { guard_data } => match metadata.collection.as_ref() {
-            Some(col) if col.verified => guard_data
-                .iter()
-                .find(|config| config.address == col.key)
-                .ok_or(ErrorCode::CollectionVerificationFailed)
-                .cloned(),
-            _ => Err(ErrorCode::CollectionVerificationFailed.into()),
-        },
-        GuardType::FirstCreatorAddress { guard_data } => {
-            if let Some(creators) = metadata.data.creators.as_ref() {
-                if let Some(first_creator) = creators.iter().find(|creator| creator.verified) {
-                    guard_data
-                        .iter()
-                        .find(|config| config.address == first_creator.address)
-                        .ok_or(ErrorCode::FirstCreatorAddressVerificationFailed)
-                        .cloned()
-                } else {
-                    Err(ErrorCode::FirstCreatorAddressVerificationFailed.into())
-                }
-            } else {
-                Err(ErrorCode::FirstCreatorAddressVerificationFailed.into())
-            }
-        }
+        GuardType::CollectionMint { guard_data } => metadata
+            .collection
+            .as_ref()
+            .filter(|col| col.verified)
+            .and_then(|col| {
+                guard_data
+                    .iter()
+                    .find(|config| config.address == col.key)
+                    .cloned()
+            })
+            .ok_or(ErrorCode::CollectionVerificationFailed),
+        GuardType::FirstCreatorAddress { guard_data } => metadata
+            .data
+            .creators
+            .as_ref()
+            .and_then(|creators| creators.iter().find(|creator| creator.verified))
+            .and_then(|first_creator| {
+                guard_data
+                    .iter()
+                    .find(|config| config.address == first_creator.address)
+                    .cloned()
+            })
+            .ok_or(ErrorCode::FirstCreatorAddressVerificationFailed),
         _ => Err(ErrorCode::InstructionNotAllowed.into()),
     }?;
 
