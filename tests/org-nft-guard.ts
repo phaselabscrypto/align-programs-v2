@@ -380,6 +380,61 @@ describe("org nft guard", () => {
       expect(logs).to.match(/ConstraintTokenOwner/);
     });
 
+    it("fails to initialize proposal with wrong token account", async () => {
+      const receiver = Keypair.generate().publicKey;
+      const { name, mint, guard, proposalConfig, organization } = await context(
+        { receiver }
+      );
+
+      const buffer = Buffer.allocUnsafe(4);
+      buffer.writeUInt32LE(0); // num proposals
+      const [proposal] = proposalKey(organization, buffer);
+
+      const metadata = await getMetadataAddress(mint);
+
+      const [tokenAccount] = await createMint(
+        provider.connection,
+        provider.wallet
+      );
+
+      let logs: string;
+
+      try {
+        await program.methods
+          .initializeProposalByNftV0({
+            name,
+            uri: "https://example.com",
+            maxChoicesPerVoter: 1,
+            choices: [
+              { name: "Aye", uri: null },
+              { name: "Nay", uri: null },
+            ],
+            tags: [],
+          })
+          .accountsStrict({
+            initializeProposalBase: {
+              payer: me,
+              guard,
+              proposal,
+              owner: me,
+              proposalConfig,
+              organization,
+              systemProgram: SystemProgram.programId,
+              proposalProgram: PROPOSAL_PROGRAM_ID,
+              organizationProgram: anchor.workspace.Organization.programId,
+            },
+            proposer: me,
+            metadata,
+            tokenAccount,
+          })
+          .simulate();
+      } catch (err) {
+        ({ logs } = err.simulationResponse || {});
+      }
+
+      expect(logs).to.match(/caused by account: metadata\..*ConstraintSeeds/);
+    });
+
     it("fails to initialize proposal with insufficient weight", async () => {
       const receiver = Keypair.generate().publicKey;
       const { name, mint, guard, proposalConfig, organization } = await context(
