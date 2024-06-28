@@ -12,8 +12,8 @@ pub struct InitializeProposalByTokenV0<'info> {
     /// CHECK: Checked in the program
     pub mint: AccountInfo<'info>,
     #[account(
-        associated_token::authority = proposer,
-        associated_token::mint = mint,
+        token::authority = proposer,
+        token::mint = mint,
     )]
     pub token_account: Box<Account<'info, TokenAccount>>,
 }

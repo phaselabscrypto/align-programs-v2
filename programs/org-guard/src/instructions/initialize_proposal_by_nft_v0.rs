@@ -10,17 +10,14 @@ pub struct InitializeProposalByNftV0<'info> {
     pub initialize_proposal_base: InitializeProposalBaseV0<'info>,
 
     pub proposer: Signer<'info>,
-    /// CHECK: Checked in the program
-    pub mint: AccountInfo<'info>,
     #[account(
-        seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), mint.key().as_ref()],
+        seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), token_account.mint.as_ref()],
         seeds::program = MetadataAccount::owner(),
         bump
     )]
     pub metadata: Account<'info, MetadataAccount>,
     #[account(
-        associated_token::authority = proposer,
-        associated_token::mint = mint,
+        token::authority = proposer,
     )]
     pub token_account: Box<Account<'info, TokenAccount>>,
 }
@@ -72,7 +69,7 @@ fn assert_sufficient_weight(
         _ => Err(ErrorCode::InstructionNotAllowed.into()),
     }?;
 
-    if config.multiplier as u64 >= token.amount {
+    if token.amount > 0 && config.multiplier > 0 {
         Ok(())
     } else {
         Err(ErrorCode::InsufficientWeight.into())

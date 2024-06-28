@@ -1,5 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import { OrgNftGuard } from "../target/types/org_nft_guard";
 import { Organization } from "../target/types/organization";
 import { expect } from "chai";
@@ -11,7 +16,11 @@ import {
 import { organizationKey } from "@helium/organization-sdk";
 import { IDL as PROPOSAL_IDL, Proposal as ProposalIdl } from "./idls/proposal";
 import { getMetadataAddress, mintCollectionNft, mintNft } from "./helpers";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  createAssociatedTokenAccount,
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
 import { createMint } from "./utils";
 
 const orgNftGuardKey = (name: string) => {
@@ -303,7 +312,6 @@ describe("org nft guard", () => {
             organizationProgram: anchor.workspace.Organization.programId,
           },
           proposer: me,
-          mint,
           metadata,
           tokenAccount,
         })
@@ -361,7 +369,6 @@ describe("org nft guard", () => {
               organizationProgram: anchor.workspace.Organization.programId,
             },
             proposer: me,
-            mint,
             metadata,
             tokenAccount,
           })
@@ -370,9 +377,64 @@ describe("org nft guard", () => {
         ({ logs } = err.simulationResponse || {});
       }
 
-      expect(logs).to.match(
-        /caused by account: token_account\..*ConstraintTokenOwner/
+      expect(logs).to.match(/ConstraintTokenOwner/);
+    });
+
+    it("fails to initialize proposal with insufficient weight", async () => {
+      const receiver = Keypair.generate().publicKey;
+      const { name, mint, guard, proposalConfig, organization } = await context(
+        { receiver }
       );
+
+      const buffer = Buffer.allocUnsafe(4);
+      buffer.writeUInt32LE(0); // num proposals
+      const [proposal] = proposalKey(organization, buffer);
+
+      const metadata = await getMetadataAddress(mint);
+      const tokenAccount = getAssociatedTokenAddressSync(mint, me);
+
+      const tx = new Transaction();
+      tx.add(
+        createAssociatedTokenAccountInstruction(me, tokenAccount, me, mint)
+      );
+      await provider.sendAndConfirm(tx);
+
+      let logs: string;
+
+      try {
+        await program.methods
+          .initializeProposalByNftV0({
+            name,
+            uri: "https://example.com",
+            maxChoicesPerVoter: 1,
+            choices: [
+              { name: "Aye", uri: null },
+              { name: "Nay", uri: null },
+            ],
+            tags: [],
+          })
+          .accountsStrict({
+            initializeProposalBase: {
+              payer: me,
+              guard,
+              proposal,
+              owner: me,
+              proposalConfig,
+              organization,
+              systemProgram: SystemProgram.programId,
+              proposalProgram: PROPOSAL_PROGRAM_ID,
+              organizationProgram: anchor.workspace.Organization.programId,
+            },
+            proposer: me,
+            metadata,
+            tokenAccount,
+          })
+          .simulate();
+      } catch (err) {
+        ({ logs } = err.simulationResponse || {});
+      }
+
+      expect(logs).to.match(/InsufficientWeight/);
     });
 
     it("fails to initialize proposal with token from wrong collection", async () => {
@@ -421,7 +483,6 @@ describe("org nft guard", () => {
               organizationProgram: anchor.workspace.Organization.programId,
             },
             proposer: me,
-            mint,
             metadata,
             tokenAccount,
           })
