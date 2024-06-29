@@ -9,11 +9,8 @@ pub struct InitializeProposalByTokenV0<'info> {
     pub initialize_proposal_base: InitializeProposalBaseV0<'info>,
 
     pub proposer: Signer<'info>,
-    /// CHECK: Checked in the program
-    pub mint: AccountInfo<'info>,
     #[account(
         token::authority = proposer,
-        token::mint = mint,
     )]
     pub token_account: Box<Account<'info, TokenAccount>>,
 }
@@ -24,24 +21,16 @@ pub fn handler<'info>(
 ) -> Result<()> {
     let base = &ctx.accounts.initialize_proposal_base;
 
-    assert_sufficient_weight(
-        &base.guard.guard_type,
-        &ctx.accounts.mint,
-        &ctx.accounts.token_account,
-    )?;
+    assert_sufficient_weight(&base.guard.guard_type, &ctx.accounts.token_account)?;
 
     cpi_initialize_proposal(&base, args)
 }
 
-fn assert_sufficient_weight(
-    guard_type: &GuardType,
-    mint: &AccountInfo,
-    token: &TokenAccount,
-) -> Result<()> {
+fn assert_sufficient_weight(guard_type: &GuardType, token: &TokenAccount) -> Result<()> {
     let config = match guard_type {
         GuardType::MintList { guard_data } => guard_data
             .iter()
-            .find(|config| config.address == mint.key())
+            .find(|config| config.address == token.mint)
             .ok_or(ErrorCode::MintNotValid)
             .cloned(),
 

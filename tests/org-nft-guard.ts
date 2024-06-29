@@ -636,7 +636,6 @@ describe("org nft guard", () => {
             organizationProgram: anchor.workspace.Organization.programId,
           },
           proposer: me,
-          mint,
           tokenAccount,
         })
         .rpc();

@@ -10,15 +10,14 @@ pub struct InitializeGuardArgsV0 {
 #[derive(Accounts)]
 #[instruction(args: InitializeGuardArgsV0)]
 pub struct InitializeGuardV0<'info> {
-    /// CHECK: Payer
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
-      init,
-      payer = payer,
-      space = 8 + 80 + GuardV0::INIT_SPACE,
-      seeds = [b"guard", args.name.as_bytes()],
-      bump
+        init,
+        payer = payer,
+        space = 8 + 80 + GuardV0::INIT_SPACE,
+        seeds = [b"guard", args.name.as_bytes()],
+        bump
     )]
     pub nft_guard: Box<Account<'info, GuardV0>>,
     pub system_program: Program<'info, System>,

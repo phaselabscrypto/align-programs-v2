@@ -29,14 +29,14 @@ pub struct InitializeProposalBaseV0<'info> {
     /// CHECK: Setting this account, does not need a check. Putting here instead of args to save tx space
     pub owner: UncheckedAccount<'info>,
     #[account(
-      mut,
-      seeds = [
-        b"proposal",
-        organization.key().as_ref(),
-        &organization.num_proposals.to_le_bytes()[..]
-      ],
-      seeds::program = organization.proposal_program,
-      bump,
+        mut,
+        seeds = [
+            b"proposal",
+            organization.key().as_ref(),
+            &organization.num_proposals.to_le_bytes()[..],
+        ],
+        seeds::program = organization.proposal_program,
+        bump,
     )]
     /// CHECK: Checked via cpi
     pub proposal: AccountInfo<'info>,

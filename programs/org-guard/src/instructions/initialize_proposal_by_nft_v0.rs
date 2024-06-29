@@ -11,9 +11,13 @@ pub struct InitializeProposalByNftV0<'info> {
 
     pub proposer: Signer<'info>,
     #[account(
-        seeds = ["metadata".as_bytes(), MetadataAccount::owner().as_ref(), token_account.mint.as_ref()],
+        seeds = [
+            "metadata".as_bytes(),
+            MetadataAccount::owner().as_ref(),
+            token_account.mint.as_ref(),
+        ],
         seeds::program = MetadataAccount::owner(),
-        bump
+        bump,
     )]
     pub metadata: Account<'info, MetadataAccount>,
     #[account(
