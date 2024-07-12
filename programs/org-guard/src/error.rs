@@ -4,12 +4,14 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Mint does meet guard requirements")]
     MintNotValid,
-    #[msg("The collection is either not verified or the mint does not match.")]
+    #[msg("The collection is either not verified or the mint does not match")]
     CollectionVerificationFailed,
-    #[msg("The weight reciprocal does not meet the Guard requirements")]
+    #[msg("The asset does not have enough weight to meet guard requirements")]
     InsufficientWeight,
-    #[msg("The first verified creator address does not match the Guard requirements.")]
+    #[msg("The first verified creator address does not meet guard requirements")]
     FirstCreatorAddressVerificationFailed,
-    #[msg("Proposal public key does meet guard requirements")]
+    #[msg("The proposer does not meet guard requirements")]
     ProposerNotValid,
+    #[msg("The instruction is not allowed for this guard")]
+    InstructionNotAllowed,
 }
