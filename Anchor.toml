@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-multisig-controller = "a2mscRXReHpSr44YPgHSedpyvgExTdiDufHqcFNmZWx"
+multisig_controller = "a2mscRXReHpSr44YPgHSedpyvgExTdiDufHqcFNmZWx"
 nft-reputation = "3mYGDQq3NM4xgJAe3khNsicsnnJwHL6kBpLTATXDiMM9"
 org_nft_guard = "a2grdoc6VNAxZ5TrbGUR1bvH6Z1AewtuwmbM8573Wis"
 organization = "a2orghRV2Bj2fyqFQtYeBZ9972raZyrvXVf5tQ9jYMK"
