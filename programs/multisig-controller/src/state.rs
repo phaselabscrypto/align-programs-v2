@@ -7,13 +7,14 @@ pub struct MultisigConfigV0 {
     // pub authority: Pubkey,
     pub name: String,
     pub use_reputation: bool,
+    pub nonce: [u8; 32],
     pub bump: u8,
     pub members: Vec<Pubkey>,
 }
 
 impl MultisigConfigV0 {
     pub fn space(name: &str, members: &Vec<Pubkey>) -> usize {
-        8 + 4 + name.len() + 1 + 1 + 4 + (members.len() * 32)
+        8 + 4 + name.len() + 1 + 1 + 32 + 4 + (members.len() * 32)
     }
 }
 
@@ -22,7 +23,7 @@ macro_rules! multisig_config_seeds {
     ( $multisig_config:expr ) => {
         &[
             b"multisig_config",
-            $multisig_config.name.as_bytes(),
+            $multisig_config.nonce.as_ref(),
             &[$multisig_config.bump],
         ]
     };

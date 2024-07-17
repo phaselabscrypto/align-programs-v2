@@ -1,3 +1,4 @@
+import * as crypto from "crypto";
 import {
   AnchorProvider,
   BN,
@@ -47,12 +48,14 @@ describe("multisig", () => {
     let proposal: PublicKey;
     let multisig: PublicKey;
     let members: web3.Keypair[];
+    let nonce: Buffer;
 
     beforeEach(async () => {
       proposal = proposalKey(me, Buffer.from(name, "utf-8"))[0];
       members = [new web3.Keypair(), new web3.Keypair(), new web3.Keypair()];
+      nonce = crypto.randomBytes(32);
       multisig = PublicKey.findProgramAddressSync(
-        [Buffer.from("multisig_config"), Buffer.from(name)],
+        [Buffer.from("multisig_config"), nonce],
         multisigProgram.programId
       )[0];
 
@@ -60,6 +63,7 @@ describe("multisig", () => {
         .initializeMultisigConfigV0({
           name,
           useReputation: false,
+          nonce: [...nonce],
           members: members.map((x) => x.publicKey),
         })
         .accountsStrict({
