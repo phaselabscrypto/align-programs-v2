@@ -14,10 +14,9 @@ import {
   proposalKey,
 } from "@helium/proposal-sdk";
 import { organizationKey } from "@helium/organization-sdk";
-import { IDL as PROPOSAL_IDL, Proposal as ProposalIdl } from "./idls/proposal";
+import { IDL as PROPOSAL_IDL } from "./idls/proposal";
 import { getMetadataAddress, mintCollectionNft, mintNft } from "./helpers";
 import {
-  createAssociatedTokenAccount,
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
