@@ -15,7 +15,7 @@ pub struct InitializeGuardV0<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + GuardV0::INIT_SPACE,
+        space = 8 + GuardV0::space(&args.name, &args.guard_type),
         seeds = [b"guard", args.name.as_bytes()],
         bump
     )]
