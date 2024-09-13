@@ -17,6 +17,6 @@ default = []
 
 [dependencies]
 anchor-lang = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism" }
-anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["token"] }
+anchor-spl = { git = "https://github.com/ChewingGlass/anchor", branch = "bugfix/cpi-polymorphism", features = ["token", "token_2022"] }
 organization = { path = "../organization", features = ["no-entrypoint", "cpi"] }
 
